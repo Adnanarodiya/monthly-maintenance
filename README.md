@@ -114,3 +114,25 @@ To link this dashboard with a live Google Spreadsheet:
    ```
 3. Open `http://localhost:8083` in your browser.
 4. If syncing with Google Sheets fails, the app automatically switches to the `fallbackData` configured in `config.js` and updates the sync indicator to `Offline Mode`.
+
+---
+
+## ⚡ Deployment to Vercel
+
+You can deploy this application to Vercel in seconds with automated CI/CD and secure credential management:
+
+### 1. Push to GitHub
+Make sure you have committed and pushed your latest changes to GitHub (with `config.js` ignored).
+
+### 2. Deploy on Vercel Dashboard
+1. Go to the [Vercel Dashboard](https://vercel.com) and log in.
+2. Click **Add New** > **Project**.
+3. Import your `monthly-maintenance` repository from GitHub.
+4. In the **Build & Development Settings**, Vercel will automatically detect `package.json` and set the build command to `npm run build` (which runs `generate-config.js`).
+5. Expand the **Environment Variables** section and add:
+   - **`SHEET_URL`**: Set your Google Apps Script URL.
+   - **`SUBMIT_URL`**: Set your Google Apps Script URL.
+6. Click **Deploy**.
+
+Vercel will dynamically generate `config.js` with your private URLs during build time. The secret credentials are kept secure in Vercel's environment variables and never exposed to the public GitHub repository!
+
