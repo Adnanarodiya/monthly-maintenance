@@ -23,3 +23,7 @@ pnpm-debug.log*
 # Local credentials / configurations
 config.js
 
+# Vercel build output
+public/
+
+

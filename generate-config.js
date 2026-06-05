@@ -2,7 +2,14 @@ const fs = require('fs');
 const path = require('path');
 
 const examplePath = path.join(__dirname, 'config.example.js');
-const outputPath = path.join(__dirname, 'config.js');
+const publicDir = path.join(__dirname, 'public');
+
+// Ensure public directory exists
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir);
+}
+
+const outputPath = path.join(publicDir, 'config.js');
 
 if (!fs.existsSync(examplePath)) {
   console.error(`Error: ${examplePath} not found.`);
@@ -21,5 +28,13 @@ content = content.replace("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL", sheetUrl);
 // Replace submitUrl placeholder (second occurrence)
 content = content.replace("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL", submitUrl);
 
+// Write config.js to public folder
 fs.writeFileSync(outputPath, content, 'utf8');
-console.log('Successfully generated config.js for deployment.');
+
+// Copy static web assets to public folder
+fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(publicDir, 'index.html'));
+fs.copyFileSync(path.join(__dirname, 'app.js'), path.join(publicDir, 'app.js'));
+fs.copyFileSync(path.join(__dirname, 'style.css'), path.join(publicDir, 'style.css'));
+
+console.log('Successfully generated config.js and copied assets to public/ for deployment.');
+
