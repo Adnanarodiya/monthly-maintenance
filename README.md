@@ -45,11 +45,12 @@ A modern, responsive, and lightweight Single Page Application (SPA) dashboard de
 ```bash
 ├── index.html        # Main app shell, KPI containers, and modals
 ├── app.js            # Frontend logic (State, UI rendering, WhatsApp engine, Sync API)
-├── config.js         # API endpoints configuration and offline fallback data
+├── config.example.js # Template for credentials & fallback data
+├── config.js         # Active configuration (gitignored to protect secrets)
 ├── style.css         # Styling system (Layouts, themes, animations, responsiveness)
 ├── AppScript.js      # Backend script for Google Apps Script deployment
 ├── *.csv             # CSV backups and template spreadsheets
-└── .gitignore        # Standard Git exclusions
+└── .gitignore        # Standard Git exclusions including config.js
 ```
 
 ---
@@ -84,7 +85,11 @@ To link this dashboard with a live Google Spreadsheet:
    - Copy the generated **Web App URL**.
 
 3. **Configure the Web App**:
-   - Open [config.js](config.js) in your codebase.
+   - Copy `config.example.js` to create your local `config.js` file:
+     ```bash
+     cp config.example.js config.js
+     ```
+   - Open your newly created `config.js` file.
    - Paste the Web App URL into both `sheetUrl` and `submitUrl`:
      ```javascript
      window.APP_CONFIG = {
@@ -93,14 +98,19 @@ To link this dashboard with a live Google Spreadsheet:
        fallbackData: [ ... ]
      };
      ```
+   - *Note: `config.js` is added to `.gitignore` so your private API URLs remain secure and will not be pushed to GitHub.*
 
 ---
 
 ## 💻 Local Development
 
-1. Serve the files locally using any simple HTTP server:
+1. Setup your local config file:
+   ```bash
+   cp config.example.js config.js
+   ```
+2. Serve the files locally using any simple HTTP server:
    ```bash
    npx http-server -p 8083
    ```
-2. Open `http://localhost:8083` in your browser.
-3. If syncing with Google Sheets fails, the app automatically switches to the `fallbackData` configured in `config.js` and updates the sync indicator to `Offline Mode`.
+3. Open `http://localhost:8083` in your browser.
+4. If syncing with Google Sheets fails, the app automatically switches to the `fallbackData` configured in `config.js` and updates the sync indicator to `Offline Mode`.

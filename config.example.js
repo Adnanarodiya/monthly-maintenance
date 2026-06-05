@@ -1,10 +1,10 @@
 // Configuration for Ihsanpark Society Maintenance Web App
 window.APP_CONFIG = {
   // Live Google Sheet CSV export URL (Publish your sheet as CSV and paste here)
-  sheetUrl: "https://script.google.com/macros/s/AKfycbynMZ-LyK6N_tAn0iGt2W59YW5QOEp0Qtnr4pSR2melWMwgZkNrMowrNTK7v-pS7YaQaA/exec",
+  sheetUrl: "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL",
 
   // Live Google Apps Script submission URL for adding/editing/deleting members
-  submitUrl: "https://script.google.com/macros/s/AKfycbynMZ-LyK6N_tAn0iGt2W59YW5QOEp0Qtnr4pSR2melWMwgZkNrMowrNTK7v-pS7YaQaA/exec",
+  submitUrl: "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL",
 
   // Fallback data if Google Sheet is unreachable or before setup is completed
   fallbackData: [
