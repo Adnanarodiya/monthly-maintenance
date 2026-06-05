@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Ihsanpark Society Maintenance Chart Sheet. Search bungalow payments, track remaining or paid status, and send WhatsApp reminders. Direct sync with Google Sheets.">
+  <title>Ihsanpark Society Maintenance Chart</title>
+
+  <!-- Font and Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+
+  <!-- Style Link -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Main App Shell -->
+  <main class="app-container" id="app-shell">
+    
+    <!-- Header Area -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <h1 class="brand-title" id="main-heading">
+          <i class="ti ti-home-dollar" aria-hidden="true"></i> Ihsanpark
+        </h1>
+        <div class="brand-subtitle">
+          <span>Society Maintenance</span>
+        </div>
+      </div>
+      
+      <!-- Top Action Controls -->
+      <div class="header-actions">
+        <button class="btn-add-member" id="open-modal-btn" aria-label="Add Member Record">
+          <i class="ti ti-plus" aria-hidden="true"></i><span>Add</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scrollable Content Wrapper -->
+    <div class="app-content">
+      
+      <!-- Panel 1: Dues List (Active by default) -->
+      <div class="view-panel active" id="panel-list">
+        <!-- Search Controls -->
+        <section class="controls-section" aria-label="Search">
+          <div class="search-input-wrapper">
+            <i class="ti ti-search search-icon" aria-hidden="true"></i>
+            <input type="text" id="search" class="search-input" placeholder="Search bungalow, owner, remarks..."
+              autocomplete="off" aria-label="Search records" />
+            <button class="search-clear" id="search-clear" aria-label="Clear Search Input">
+              <i class="ti ti-x" aria-hidden="true"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- Meta Counts & Sync Label -->
+        <div class="meta-info-row" id="meta-row">
+          <span class="shops-count" id="count">0 records listed</span>
+          <span class="sync-status" id="sync-status-label">
+            <i class="ti ti-cloud-check"></i> Connected
+          </span>
+        </div>
+
+        <!-- Active List -->
+        <section class="results-list" id="results" aria-label="Society Maintenance List">
+          <!-- Injected Dynamically by app.js -->
+        </section>
+      </div>
+
+      <!-- Panel 2: Dashboard Stats (Hidden by default) -->
+      <div class="view-panel" id="panel-stats">
+        <section class="dashboard-grid" aria-label="Overview Stats">
+          <!-- Card 1: Total Outstanding -->
+          <div class="kpi-card outstanding">
+            <div class="kpi-icon-wrap">
+              <i class="ti ti-wallet-off"></i>
+            </div>
+            <div class="kpi-details">
+              <span class="kpi-label">Total Outstanding</span>
+              <h2 class="kpi-value" id="stat-outstanding">₹0</h2>
+            </div>
+          </div>
+
+          <!-- Card 2: Collection Progress -->
+          <div class="kpi-card efficiency">
+            <div class="kpi-icon-wrap">
+              <i class="ti ti-chart-donut"></i>
+            </div>
+            <div class="kpi-details">
+              <span class="kpi-label">Collection Progress</span>
+              <h2 class="kpi-value" id="stat-efficiency">0%</h2>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="efficiency-bar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Collection Ratio -->
+          <div class="kpi-card ratios">
+            <div class="kpi-icon-wrap">
+              <i class="ti ti-users-group"></i>
+            </div>
+            <div class="kpi-details">
+              <span class="kpi-label">Paid vs Remaining</span>
+              <div class="ratio-values">
+                <span class="ratio-paid" id="stat-paid-count">0 Paid</span>
+                <span class="ratio-divider">•</span>
+                <span class="ratio-remaining" id="stat-remaining-count">0 Remaining</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="tip-box" style="margin-top: 1.5rem;">
+          <strong>📊 Collection Summary:</strong> Metrics recalculate dynamically based on payment status changes. Ensure your connected Google Sheet is synced for real-time updates.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" id="nav-btn-list" aria-label="Bungalow List">
+        <i class="ti ti-list-check"></i>
+        <span>Bungalows</span>
+      </button>
+      <button class="nav-item" id="nav-btn-stats" aria-label="Stats Dashboard">
+        <i class="ti ti-chart-pie"></i>
+        <span>Dashboard</span>
+      </button>
+    </nav>
+
+    <!-- Floating Toast Notification -->
+    <div class="toast" id="toast" role="alert" aria-live="polite">
+      <!-- Injected Dynamically by app.js -->
+    </div>
+
+  </main>
+
+  <!-- Add/Edit Modal Overlay -->
+  <div class="modal-overlay" id="modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-container">
+      <header class="modal-header">
+        <h2 class="modal-title" id="modal-title">Add Bungalow Record</h2>
+        <button class="btn-modal-close" id="close-modal-btn" aria-label="Close dialog">
+          <i class="ti ti-x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <form class="modal-form" id="member-form" novalidate>
+        <!-- Bungalow Number -->
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="bungalow">Bungalow No. <span class="required">*</span></label>
+            <input type="text" id="bungalow" placeholder="e.g. A-1/A, B-10" required />
+            <span class="error-msg" id="bungalow-error"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" class="form-select">
+              <option value="Remaining">Remaining</option>
+              <option value="PAID">Paid</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Owner Name -->
+        <div class="form-group">
+          <label for="owner-name">Owner Name <span class="required">*</span></label>
+          <input type="text" id="owner-name" placeholder="e.g. ઈરફાન ભાઈ મેમણ" required />
+          <span class="error-msg" id="owner-name-error"></span>
+        </div>
+
+        <!-- Months & Remarks -->
+        <div class="form-group">
+          <label for="months-desc">Month's Details / Remarks</label>
+          <input type="text" id="months-desc" placeholder="e.g. ઓક્ટોબર 2025 થી બાકી * 2" />
+        </div>
+
+        <!-- Financial Row (Rate, Months Remaining, Bank Money, Method) -->
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="rate">Monthly Rate (₹)</label>
+            <input type="number" id="rate" value="700" min="0" required />
+            <span class="error-msg" id="rate-error"></span>
+          </div>
+
+          <div class="form-group">
+            <label for="remaining-months">Months Remaining</label>
+            <input type="number" id="remaining-months" value="1" min="0" required />
+            <span class="error-msg" id="remaining-months-error"></span>
+          </div>
+        </div>
+
+        <!-- Bank Money and Payment Method -->
+        <div class="form-group-row">
+          <div class="form-group">
+            <label for="method">Payment Method</label>
+            <select id="method" class="form-select">
+              <option value="None">None</option>
+              <option value="Cash">Cash</option>
+              <option value="UPI">GPay / UPI</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="bank-money">Bank Money (₹)</label>
+            <input type="number" id="bank-money" value="0" min="0" />
+          </div>
+        </div>
+
+        <!-- Dynamic Total Calc display -->
+        <div class="total-remaining-display">
+          <span>Calculated Outstanding: </span>
+          <strong id="calc-total-remaining">₹700</strong>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancel-modal-btn">Cancel</button>
+          <button type="submit" class="btn-primary" id="submit-btn">
+            <span class="btn-text">Add Record</span>
+            <div class="btn-spinner" id="submit-spinner" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quick Pay Modal Overlay -->
+  <div class="modal-overlay" id="quickpay-overlay" aria-hidden="true" role="dialog" aria-labelledby="quickpay-title">
+    <div class="modal-container" style="max-width: 400px;">
+      <header class="modal-header">
+        <h2 class="modal-title" id="quickpay-title">Record Payment</h2>
+        <button class="btn-modal-close" id="close-quickpay-btn" aria-label="Close dialog">
+          <i class="ti ti-x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <form class="modal-form" id="quickpay-form" novalidate>
+        <div class="total-remaining-display" style="background-color: var(--bg-tertiary); margin-bottom: 0.5rem;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Bungalow</span>
+            <strong id="qp-bungalow-display" style="color: var(--text-primary); font-size: 1.1rem;">A-1/A</strong>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Outstanding Dues</span>
+            <strong id="qp-amount-display" style="color: #ef4444; font-size: 1.1rem;">₹700</strong>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="qp-method">Payment Method</label>
+          <select id="qp-method" class="form-select">
+            <option value="Cash">Cash</option>
+            <option value="UPI">GPay / UPI</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="qp-bank-money-group" style="display: none;">
+          <label for="qp-bank-money">Received Amount (Bank Money) (₹)</label>
+          <input type="number" id="qp-bank-money" value="0" min="0" />
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancel-quickpay-btn">Cancel</button>
+          <button type="submit" class="btn-primary" id="submit-quickpay-btn">
+            <span class="btn-text">Confirm Paid</span>
+            <div class="btn-spinner" id="quickpay-spinner" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Load Scripts -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
