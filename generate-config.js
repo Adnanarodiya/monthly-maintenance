@@ -35,6 +35,15 @@ fs.writeFileSync(outputPath, content, 'utf8');
 fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(publicDir, 'index.html'));
 fs.copyFileSync(path.join(__dirname, 'app.js'), path.join(publicDir, 'app.js'));
 fs.copyFileSync(path.join(__dirname, 'style.css'), path.join(publicDir, 'style.css'));
+if (fs.existsSync(path.join(__dirname, 'logo.png'))) {
+  fs.copyFileSync(path.join(__dirname, 'logo.png'), path.join(publicDir, 'logo.png'));
+}
+if (fs.existsSync(path.join(__dirname, 'manifest.json'))) {
+  fs.copyFileSync(path.join(__dirname, 'manifest.json'), path.join(publicDir, 'manifest.json'));
+}
+if (fs.existsSync(path.join(__dirname, 'sw.js'))) {
+  fs.copyFileSync(path.join(__dirname, 'sw.js'), path.join(publicDir, 'sw.js'));
+}
 
 console.log('Successfully generated config.js and copied assets to public/ for deployment.');
 

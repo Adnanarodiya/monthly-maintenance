@@ -49,7 +49,6 @@ const elements = {
   rate: document.getElementById("rate"),
   remainingMonths: document.getElementById("remaining-months"),
   method: document.getElementById("method"),
-  bankMoney: document.getElementById("bank-money"),
   calcTotalDisplay: document.getElementById("calc-total-remaining"),
   
   // Input Error Message fields
@@ -63,8 +62,6 @@ const elements = {
   qpBungalowDisplay: document.getElementById("qp-bungalow-display"),
   qpAmountDisplay: document.getElementById("qp-amount-display"),
   qpMethod: document.getElementById("qp-method"),
-  qpBankMoney: document.getElementById("qp-bank-money"),
-  qpBankMoneyGroup: document.getElementById("qp-bank-money-group"),
   qpCancelBtn: document.getElementById("cancel-quickpay-btn"),
   qpCloseBtn: document.getElementById("close-quickpay-btn"),
   qpForm: document.getElementById("quickpay-form"),
@@ -80,9 +77,144 @@ const elements = {
 
 // Initial Setup
 document.addEventListener("DOMContentLoaded", () => {
-  fetchData();
-  setupEventListeners();
+  initSecurityGate();
+  registerServiceWorker();
 });
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => console.log('PWA Service Worker registered successfully!', reg))
+      .catch((err) => console.error('PWA Service Worker registration failed:', err));
+  }
+}
+
+// Security Gate
+function initSecurityGate() {
+  const isUnlocked = sessionStorage.getItem("unlocked") === "true";
+  const lockScreen = document.getElementById("lock-screen");
+  const appShell = document.getElementById("app-shell");
+
+  if (isUnlocked) {
+    if (lockScreen) lockScreen.style.display = "none";
+    if (appShell) appShell.style.display = "flex";
+    fetchData();
+    setupEventListeners();
+  } else {
+    if (lockScreen) lockScreen.style.display = "flex";
+    if (appShell) appShell.style.display = "none";
+    setupSecurityEventListeners();
+  }
+}
+
+function setupSecurityEventListeners() {
+  const digits = [
+    document.getElementById("pin-1"),
+    document.getElementById("pin-2"),
+    document.getElementById("pin-3"),
+    document.getElementById("pin-4")
+  ];
+  const lockForm = document.getElementById("lock-form");
+  const lockContainer = document.getElementById("lock-container");
+  const lockError = document.getElementById("lock-error");
+  const lockScreen = document.getElementById("lock-screen");
+  const appShell = document.getElementById("app-shell");
+
+  // Focus the first field
+  if (digits[0]) digits[0].focus();
+
+  // Handle inputs typing and backspaces
+  digits.forEach((input, index) => {
+    if (!input) return;
+
+    // input event for normal typing (mobile & desktop)
+    input.addEventListener("input", (e) => {
+      const value = e.target.value;
+      if (value.length > 0) {
+        // If we typed a digit, focus the next one
+        if (index < 3) {
+          digits[index + 1].focus();
+        }
+      }
+    });
+
+    // keydown event specifically for Backspace
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace") {
+        if (input.value === "" && index > 0) {
+          // If current field is empty, go to previous field and clear it
+          digits[index - 1].focus();
+          digits[index - 1].value = "";
+        } else {
+          // Just clear current field
+          input.value = "";
+        }
+      }
+    });
+
+    // paste event (e.g. if user pastes the PIN)
+    input.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pastedData = (e.clipboardData || window.clipboardData).getData("text");
+      const cleanedData = pastedData.replace(/[^0-9]/g, "").slice(0, 4);
+      
+      for (let i = 0; i < cleanedData.length; i++) {
+        if (digits[i]) {
+          digits[i].value = cleanedData[i];
+        }
+      }
+      
+      // Focus the last filled or next focusable
+      const focusIndex = Math.min(cleanedData.length, 3);
+      if (digits[focusIndex]) digits[focusIndex].focus();
+    });
+  });
+
+  // Submit form validation
+  if (lockForm) {
+    lockForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      
+      const pinValue = digits.map(input => input.value).join("");
+      
+      if (pinValue === "7866") {
+        // Correct pin
+        sessionStorage.setItem("unlocked", "true");
+        
+        // Premium fadeout animation
+        lockScreen.style.transition = "opacity 0.35s ease, transform 0.35s ease";
+        lockScreen.style.opacity = "0";
+        lockScreen.style.transform = "scale(1.05)";
+        
+        setTimeout(() => {
+          lockScreen.style.display = "none";
+          appShell.style.display = "flex";
+          
+          // Load data and normal listeners
+          fetchData();
+          setupEventListeners();
+        }, 350);
+        
+      } else {
+        // Incorrect pin: shake container and show error
+        lockError.textContent = "Incorrect PIN. Access Denied.";
+        lockContainer.classList.add("shake");
+        
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        
+        setTimeout(() => {
+          lockContainer.classList.remove("shake");
+        }, 400);
+
+        // Reset and refocus first input
+        digits.forEach(input => {
+          if (input) input.value = "";
+        });
+        if (digits[0]) digits[0].focus();
+      }
+    });
+  }
+}
 
 // No theme helper functions needed (always light mode)
 
@@ -289,7 +421,7 @@ function renderMembers(list) {
     const escapedOwner = m.ownerName.replace(/'/g, "\\'");
     
     return `
-      <div class="member-card" id="member-card-${m.index}">
+      <div class="member-card ${statusClass}" id="member-card-${m.index}">
         <div class="card-header-row">
           <div class="bungalow-tag-wrap">
             <span class="bungalow-num">${m.bungalow}</span>
@@ -472,11 +604,9 @@ window.triggerQuickPay = function(index) {
   // Set details in modal
   elements.qpBungalowDisplay.textContent = member.bungalow;
   elements.qpAmountDisplay.textContent = `₹${member.totalRemaining.toLocaleString("en-IN")}`;
-  elements.qpBankMoney.value = member.totalRemaining;
   
-  // Reset method & hide bank money input since default is Cash
+  // Reset method
   elements.qpMethod.value = "Cash";
-  elements.qpBankMoneyGroup.style.display = "none";
 
   // Open modal
   elements.qpOverlay.classList.add("open");
@@ -501,7 +631,7 @@ async function handleQuickPaySubmit(e) {
   if (!member) return;
 
   const methodVal = elements.qpMethod.value;
-  const bankMoneyVal = methodVal === "Cash" ? 0 : (Number(elements.qpBankMoney.value) || 0);
+  const bankMoneyVal = methodVal === "Cash" ? 0 : member.totalRemaining;
 
   const submitUrl = window.APP_CONFIG.submitUrl;
   
@@ -589,7 +719,6 @@ window.triggerEdit = function(index) {
   elements.rate.value = member.rate;
   elements.remainingMonths.value = member.remainingMonths;
   elements.method.value = member.method;
-  elements.bankMoney.value = member.bankMoney;
 
   autoCalculateTotal();
 
@@ -716,6 +845,24 @@ async function handleFormSubmit(e) {
   const submitUrl = window.APP_CONFIG.submitUrl;
   const isEditing = state.editIndex !== null;
 
+  let bankMoneyVal = 0;
+  if (elements.method.value === "UPI") {
+    if (isEditing) {
+      const member = state.members.find(m => m.index.toString() === state.editIndex.toString());
+      if (member) {
+        if (elements.status.value === "PAID" || remainingMonthsVal === 0) {
+          bankMoneyVal = member.totalRemaining;
+        } else if (remainingMonthsVal < member.remainingMonths) {
+          bankMoneyVal = rateVal * (member.remainingMonths - remainingMonthsVal);
+        }
+      }
+    } else {
+      if (elements.status.value === "PAID" || remainingMonthsVal === 0) {
+        bankMoneyVal = rateVal;
+      }
+    }
+  }
+
   // Local State Update payload
   const payload = {
     action: isEditing ? "edit" : "add",
@@ -727,7 +874,7 @@ async function handleFormSubmit(e) {
     rate: rateVal,
     remainingMonths: remainingMonthsVal,
     method: elements.method.value,
-    bankMoney: Number(elements.bankMoney.value) || 0
+    bankMoney: bankMoneyVal
   };
 
   if (isEditing) {
@@ -871,23 +1018,6 @@ function setupEventListeners() {
       closeQuickPayModal();
     }
   });
-
-  // Quick Pay Method Change (Show/Hide Bank Money)
-  elements.qpMethod.addEventListener("change", (e) => {
-    if (e.target.value === "Cash") {
-      elements.qpBankMoneyGroup.style.display = "none";
-    } else {
-      elements.qpBankMoneyGroup.style.display = "flex";
-      // Auto pre-fill with member outstanding amount if available
-      if (state.quickPayIndex) {
-        const member = state.members.find(m => m.index.toString() === state.quickPayIndex.toString());
-        if (member) {
-          elements.qpBankMoney.value = member.totalRemaining;
-        }
-      }
-    }
-  });
-
   // Quick Pay submit form
   elements.qpForm.addEventListener("submit", handleQuickPaySubmit);
 
