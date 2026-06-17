@@ -53,7 +53,8 @@ function doGet(e) {
         monthsDesc: row[6] || "",
         rate: Number(row[7]) || 0,
         remainingMonths: Number(row[8]) || 0,
-        totalRemaining: Number(row[9]) || 0
+        totalRemaining: Number(row[9]) || 0,
+        phone: row[10] || ""
       });
     }
     
@@ -100,6 +101,7 @@ function doPost(e) {
       const rate = Number(payload.rate) || 0;
       const remainingMonths = Number(payload.remainingMonths) || 0;
       const totalRemaining = rate * remainingMonths;
+      const phone = payload.phone || "";
       
       const newRow = [
         nextIndex,         // Column A: NO:-
@@ -111,7 +113,8 @@ function doPost(e) {
         monthsDesc,        // Column G: MONTH'S
         rate,              // Column H: Rate
         remainingMonths,   // Column I: Remaining Months
-        totalRemaining     // Column J: Total Remaining
+        totalRemaining,    // Column J: Total Remaining
+        phone              // Column K: Phone Number
       ];
       
       sheet.appendRow(newRow);
@@ -143,6 +146,7 @@ function doPost(e) {
       if (payload.monthsDesc !== undefined) sheet.getRange(foundRowIndex, 7).setValue(payload.monthsDesc);
       if (payload.rate !== undefined) sheet.getRange(foundRowIndex, 8).setValue(Number(payload.rate));
       if (payload.remainingMonths !== undefined) sheet.getRange(foundRowIndex, 9).setValue(Number(payload.remainingMonths));
+      if (payload.phone !== undefined) sheet.getRange(foundRowIndex, 11).setValue(payload.phone);
       
       // Re-calculate Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);

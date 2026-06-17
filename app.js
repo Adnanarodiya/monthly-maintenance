@@ -44,6 +44,7 @@ const elements = {
   bungalow: document.getElementById("bungalow"),
   status: document.getElementById("status"),
   ownerName: document.getElementById("owner-name"),
+  phone: document.getElementById("phone"),
   monthsDesc: document.getElementById("months-desc"),
   rate: document.getElementById("rate"),
   remainingMonths: document.getElementById("remaining-months"),
@@ -175,6 +176,7 @@ function parseCSV(text) {
     const rate = Number(cols[7]) || 0;
     const remainingMonths = Number(cols[8]) || 0;
     const totalRemaining = Number(cols[9]) || (rate * remainingMonths);
+    const phone = cols[10] || "";
 
     records.push({
       index: indexVal,
@@ -186,7 +188,8 @@ function parseCSV(text) {
       monthsDesc: monthsDesc.trim(),
       rate: rate,
       remainingMonths: remainingMonths,
-      totalRemaining: totalRemaining
+      totalRemaining: totalRemaining,
+      phone: phone.trim()
     });
   }
   return records;
@@ -256,6 +259,7 @@ function applyFilters() {
     return !query || 
       m.bungalow.toLowerCase().includes(query) ||
       m.ownerName.toLowerCase().includes(query) ||
+      (m.phone && m.phone.toLowerCase().includes(query)) ||
       m.monthsDesc.toLowerCase().includes(query);
   });
 
@@ -304,7 +308,13 @@ function renderMembers(list) {
 
         <div class="card-body">
           <div class="owner-row">
-            ${m.ownerName || '<span class="text-muted" style="font-weight: 400; font-size: 0.88rem;">No Owner Registered</span>'}
+            <span class="owner-name">${m.ownerName || '<span class="text-muted" style="font-weight: 400; font-size: 0.88rem;">No Owner Registered</span>'}</span>
+            ${m.phone ? `
+              <a href="tel:${m.phone}" class="owner-phone" title="Call Owner" onclick="event.stopPropagation()">
+                <i class="ti ti-phone"></i>
+                <span>${m.phone}</span>
+              </a>
+            ` : ""}
           </div>
           
           ${m.monthsDesc ? `
@@ -394,7 +404,12 @@ window.sendWhatsAppReminder = function(index) {
   }
 
   const encodedText = encodeURIComponent(message);
-  window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+  const phoneVal = member.phone ? member.phone.trim().replace(/[^0-9]/g, "") : "";
+  let waPhone = phoneVal;
+  if (waPhone.length === 10) {
+    waPhone = "91" + waPhone;
+  }
+  window.open(`https://wa.me/${waPhone}?text=${encodedText}`, "_blank");
 };
 
 // Modal Operations
@@ -569,6 +584,7 @@ window.triggerEdit = function(index) {
   elements.bungalow.value = member.bungalow;
   elements.status.value = member.status;
   elements.ownerName.value = member.ownerName;
+  elements.phone.value = member.phone || "";
   elements.monthsDesc.value = member.monthsDesc;
   elements.rate.value = member.rate;
   elements.remainingMonths.value = member.remainingMonths;
@@ -706,6 +722,7 @@ async function handleFormSubmit(e) {
     bungalow: bungalowVal,
     status: elements.status.value,
     ownerName: ownerVal,
+    phone: elements.phone.value.trim(),
     monthsDesc: elements.monthsDesc.value.trim(),
     rate: rateVal,
     remainingMonths: remainingMonthsVal,

@@ -18,7 +18,8 @@ window.APP_CONFIG = {
       monthsDesc: "ઓગસ્ટ2023થી બાકી *5+12+12+6",
       rate: 300,
       remainingMonths: 35,
-      totalRemaining: 10500
+      totalRemaining: 10500,
+      phone: ""
     },
     {
       index: 2,
@@ -30,7 +31,8 @@ window.APP_CONFIG = {
       monthsDesc: "",
       rate: 300,
       remainingMonths: 1,
-      totalRemaining: 300
+      totalRemaining: 300,
+      phone: ""
     },
     {
       index: 3,
@@ -42,7 +44,8 @@ window.APP_CONFIG = {
       monthsDesc: "ઓક્ટોબર 2025 થી બાકી 2 મકાન ના",
       rate: 300,
       remainingMonths: 1,
-      totalRemaining: 300
+      totalRemaining: 300,
+      phone: ""
     },
     {
       index: 4,
@@ -54,7 +57,8 @@ window.APP_CONFIG = {
       monthsDesc: "એપ્રિલ 2025 થી  બાકી *9+6",
       rate: 700,
       remainingMonths: 15,
-      totalRemaining: 10500
+      totalRemaining: 10500,
+      phone: ""
     },
     {
       index: 5,
@@ -66,7 +70,8 @@ window.APP_CONFIG = {
       monthsDesc: "-",
       rate: 700,
       remainingMonths: 1,
-      totalRemaining: 700
+      totalRemaining: 700,
+      phone: ""
     },
     {
       index: 6,
@@ -78,7 +83,8 @@ window.APP_CONFIG = {
       monthsDesc: "મે 2026 સુધી એન્ડવાસ",
       rate: 700,
       remainingMonths: 0,
-      totalRemaining: 0
+      totalRemaining: 0,
+      phone: ""
     },
   ]
 };
