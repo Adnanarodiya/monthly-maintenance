@@ -176,10 +176,73 @@ function doPost(e) {
       sheet.deleteRow(foundRowIndex);
       return outputJSON({ status: "success" });
       
+    } else if (action === "rollover") {
+      performMonthlyRollover();
+      return outputJSON({ status: "success", message: "Monthly rollover completed successfully." });
+      
     } else {
       return outputJSON({ status: "error", message: "Invalid action: " + action });
     }
   } catch (error) {
     return outputJSON({ status: "error", message: error.toString() });
   }
+}
+
+// Function to increment remaining months by 1 for all properties
+function performMonthlyRollover() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      console.error("Sheet not found: " + SHEET_NAME);
+      return;
+    }
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    const startRow = 3; // Row 4 (index 3 is where data starts)
+    
+    for (let i = startRow; i < values.length; i++) {
+      const rowNum = i + 1; // 1-indexed row number
+      const bungalow = values[i][1];
+      if (!bungalow) continue;
+      
+      const rate = Number(values[i][7]) || 0;
+      const currentMonths = Number(values[i][8]) || 0;
+      const newMonths = currentMonths + 1;
+      const totalRemaining = rate * newMonths;
+      
+      // Update Column C (Status) to "Remaining"
+      sheet.getRange(rowNum, 3).setValue("Remaining");
+      
+      // Update Column I (Remaining Months)
+      sheet.getRange(rowNum, 9).setValue(newMonths);
+      
+      // Update Column J (Total Remaining)
+      sheet.getRange(rowNum, 10).setValue(totalRemaining);
+    }
+    console.log("Monthly rollover completed successfully.");
+  } catch (error) {
+    console.error("Error performing monthly rollover: " + error.toString());
+  }
+}
+
+// Function to schedule/setup time-driven monthly trigger (runs on the 1st of every month at 12 AM)
+function setupMonthlyRolloverTrigger() {
+  // Delete existing triggers for performMonthlyRollover to avoid duplicates
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === "performMonthlyRollover") {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  
+  // Schedule trigger to run on the 1st day of every month at midnight
+  ScriptApp.newTrigger("performMonthlyRollover")
+    .timeBased()
+    .onMonthDay(1)
+    .atHour(0)
+    .create();
+  
+  console.log("Trigger created successfully to run on the 1st day of every month at midnight.");
 }
