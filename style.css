@@ -496,6 +496,28 @@ body {
   fill: currentColor;
 }
 
+.btn-paid-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  text-decoration: none;
+  flex-grow: 1;
+}
+
+.btn-paid-status i {
+  font-size: 0.95rem;
+}
+
 .btn-quick-pay {
   display: flex;
   align-items: center;
