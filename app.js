@@ -569,12 +569,24 @@ window.sendWhatsAppReminder = function(index) {
   }
 
   const encodedText = encodeURIComponent(message);
-  const phoneVal = member.phone ? String(member.phone).trim().replace(/[^0-9]/g, "") : "";
+  let phoneVal = member.phone ? String(member.phone).trim().replace(/[^0-9]/g, "") : "";
+  // Strip any leading zeros
+  phoneVal = phoneVal.replace(/^0+/, "");
+  
   let waPhone = phoneVal;
   if (waPhone.length === 10) {
     waPhone = "91" + waPhone;
   }
-  window.open(`https://wa.me/${waPhone}?text=${encodedText}`, "_blank");
+  
+  let waUrl = "";
+  if (waPhone) {
+    waUrl = `https://wa.me/${waPhone}?text=${encodedText}`;
+  } else {
+    // Fallback if there is no phone number: opens WhatsApp contact selector
+    waUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+  }
+  
+  window.open(waUrl, "_blank");
 };
 
 // Modal Operations
