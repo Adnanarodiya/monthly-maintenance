@@ -43,16 +43,18 @@ function doGet(e) {
       const row = data[i];
       if (!row[1]) continue; // Skip if bungalow name is empty
       
+      const remainingMonths = Number(row[8]) || 0;
+      const status = remainingMonths === 0 ? "PAID" : "Remaining";
       rows.push({
         index: row[0] !== "" ? row[0] : "*", // Keep serial number
         bungalow: row[1],
-        status: row[2] || "Remaining",
+        status: status,
         method: row[3] || "None",
         bankMoney: Number(row[4]) || 0,
         ownerName: row[5] || "",
         monthsDesc: row[6] || "",
         rate: Number(row[7]) || 0,
-        remainingMonths: Number(row[8]) || 0,
+        remainingMonths: remainingMonths,
         totalRemaining: Number(row[9]) || 0,
         phone: row[10] || ""
       });
@@ -93,13 +95,13 @@ function doPost(e) {
       const nextIndex = maxIndex + 1;
       
       const bungalow = payload.bungalow || "";
-      const status = payload.status || "Remaining";
+      const rate = Number(payload.rate) || 0;
+      const remainingMonths = Number(payload.remainingMonths) || 0;
+      const status = remainingMonths === 0 ? "PAID" : "Remaining";
       const method = payload.method || "None";
       const bankMoney = Number(payload.bankMoney) || 0;
       const ownerName = payload.ownerName || "";
       const monthsDesc = payload.monthsDesc || "";
-      const rate = Number(payload.rate) || 0;
-      const remainingMonths = Number(payload.remainingMonths) || 0;
       const totalRemaining = rate * remainingMonths;
       const phone = payload.phone || "";
       
@@ -139,7 +141,6 @@ function doPost(e) {
       
       // Update spreadsheet cells based on payload parameters
       if (payload.bungalow !== undefined) sheet.getRange(foundRowIndex, 2).setValue(payload.bungalow);
-      if (payload.status !== undefined) sheet.getRange(foundRowIndex, 3).setValue(payload.status);
       if (payload.method !== undefined) sheet.getRange(foundRowIndex, 4).setValue(payload.method);
       if (payload.bankMoney !== undefined) sheet.getRange(foundRowIndex, 5).setValue(Number(payload.bankMoney));
       if (payload.ownerName !== undefined) sheet.getRange(foundRowIndex, 6).setValue(payload.ownerName);
@@ -148,9 +149,11 @@ function doPost(e) {
       if (payload.remainingMonths !== undefined) sheet.getRange(foundRowIndex, 9).setValue(Number(payload.remainingMonths));
       if (payload.phone !== undefined) sheet.getRange(foundRowIndex, 11).setValue(payload.phone);
       
-      // Re-calculate Total Remaining: Rate * Remaining Months
+      // Re-calculate Status and Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);
       const currentMonths = payload.remainingMonths !== undefined ? Number(payload.remainingMonths) : Number(values[foundRowIndex - 1][8]);
+      const calculatedStatus = currentMonths === 0 ? "PAID" : "Remaining";
+      sheet.getRange(foundRowIndex, 3).setValue(calculatedStatus);
       sheet.getRange(foundRowIndex, 10).setValue(currentRate * currentMonths);
       
       return outputJSON({ status: "success", index: indexToEdit });

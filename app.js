@@ -275,7 +275,10 @@ async function fetchData() {
 }
 
 function loadFallbackData() {
-  state.members = window.APP_CONFIG.fallbackData;
+  state.members = window.APP_CONFIG.fallbackData.map(m => ({
+    ...m,
+    status: m.remainingMonths === 0 ? "PAID" : "Remaining"
+  }));
   state.connectionStatus = "offline";
   elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Offline Mode`;
   elements.syncStatusLabel.style.color = "#ef4444";
@@ -300,13 +303,13 @@ function parseCSV(text) {
     if (!bungalow || bungalow.trim() === "" || bungalow.toLowerCase().includes("bungalow")) continue;
 
     const indexVal = cols[0] !== "" ? cols[0] : `M${i}`; // Generate index if missing
-    const status = cols[2] === "PAID" ? "PAID" : "Remaining";
+    const remainingMonths = Number(cols[8]) || 0;
+    const status = remainingMonths === 0 ? "PAID" : "Remaining";
     const method = cols[3] || "None";
     const bankMoney = Number(cols[4]) || 0;
     const ownerName = cols[5] || "";
     const monthsDesc = cols[6] || "";
     const rate = Number(cols[7]) || 0;
-    const remainingMonths = Number(cols[8]) || 0;
     const totalRemaining = Number(cols[9]) || (rate * remainingMonths);
     const phone = cols[10] || "";
 
@@ -588,11 +591,26 @@ function autoCalculateTotal() {
   const monthsVal = Number(elements.remainingMonths.value) || 0;
   const total = rateVal * monthsVal;
   elements.calcTotalDisplay.textContent = `₹${total.toLocaleString("en-IN")}`;
+
+  // Dynamically update status based on remaining months
+  if (monthsVal === 0) {
+    elements.status.value = "PAID";
+  } else {
+    elements.status.value = "Remaining";
+  }
 }
 
 // Form input change calculations
 elements.rate.addEventListener("input", autoCalculateTotal);
 elements.remainingMonths.addEventListener("input", autoCalculateTotal);
+elements.status.addEventListener("change", () => {
+  if (elements.status.value === "PAID") {
+    elements.remainingMonths.value = 0;
+  } else if (elements.status.value === "Remaining" && (Number(elements.remainingMonths.value) || 0) === 0) {
+    elements.remainingMonths.value = 1;
+  }
+  autoCalculateTotal();
+});
 
 // Quick Pay operation - Opens modal to ask method & amount
 window.triggerQuickPay = function(index) {
