@@ -91,7 +91,19 @@ function registerServiceWorker() {
 
 // Security Gate
 function initSecurityGate() {
-  const isUnlocked = sessionStorage.getItem("unlocked") === "true";
+  const unlockedAt = localStorage.getItem("unlockedAt");
+  let isUnlocked = false;
+  
+  if (unlockedAt) {
+    const elapsed = Date.now() - Number(unlockedAt);
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (elapsed < twentyFourHours) {
+      isUnlocked = true;
+    } else {
+      localStorage.removeItem("unlockedAt");
+    }
+  }
+
   const lockScreen = document.getElementById("lock-screen");
   const appShell = document.getElementById("app-shell");
 
@@ -134,6 +146,12 @@ function setupSecurityEventListeners() {
         // If we typed a digit, focus the next one
         if (index < 3) {
           digits[index + 1].focus();
+        } else {
+          // Auto-submit when the 4th digit is typed
+          const pinValue = digits.map(input => input.value).join("");
+          if (pinValue.length === 4) {
+            lockForm.dispatchEvent(new Event("submit"));
+          }
         }
       }
     });
@@ -167,6 +185,12 @@ function setupSecurityEventListeners() {
       // Focus the last filled or next focusable
       const focusIndex = Math.min(cleanedData.length, 3);
       if (digits[focusIndex]) digits[focusIndex].focus();
+
+      // Auto-submit if 4 digits were pasted
+      const pinValue = digits.map(input => input.value).join("");
+      if (pinValue.length === 4) {
+        lockForm.dispatchEvent(new Event("submit"));
+      }
     });
   });
 
@@ -178,8 +202,8 @@ function setupSecurityEventListeners() {
       const pinValue = digits.map(input => input.value).join("");
       
       if (pinValue === "7866") {
-        // Correct pin
-        sessionStorage.setItem("unlocked", "true");
+        // Correct pin - Remember for 24 hours
+        localStorage.setItem("unlockedAt", Date.now().toString());
         
         // Premium fadeout animation
         lockScreen.style.transition = "opacity 0.35s ease, transform 0.35s ease";
