@@ -554,39 +554,104 @@ function showToast(message) {
   }, 2500);
 }
 
-// Pre-fill WhatsApp Invoice message and redirect
+function formatWhatsAppPhone(phone) {
+  let phoneVal = phone ? String(phone).trim().replace(/[^0-9]/g, "") : "";
+  phoneVal = phoneVal.replace(/^0+/, "");
+  if (!phoneVal) return "";
+  return phoneVal.length === 10 ? "91" + phoneVal : phoneVal;
+}
+
+function openWhatsApp(member, message) {
+  const encodedText = encodeURIComponent(message);
+  const waPhone = formatWhatsAppPhone(member.phone);
+
+  const waUrl = waPhone
+    ? `https://wa.me/${waPhone}?text=${encodedText}`
+    : `https://api.whatsapp.com/send?text=${encodedText}`;
+
+  window.open(waUrl, "_blank");
+  return true;
+}
+
+function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
+  const isFullyPaid = member.remainingMonths === 0 || member.status === "PAID";
+  const monthsLabel = monthsPaid === 1 ? "1 month" : `${monthsPaid} months`;
+
+  let message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
+
+  if (monthsPaid > 0) {
+    message += `You paid: *${monthsLabel}* maintenance (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
+    if (method && method !== "None") {
+      message += `Method: *${method}*\n`;
+    }
+  } else if (isFullyPaid && method && method !== "None") {
+    message += `Method: *${method}*\n`;
+  }
+
+  if (isFullyPaid) {
+    message += `\n*All outstanding dues are now cleared.* ✅\nOutstanding: *₹0* | Remaining: *0 month(s)*`;
+    if (member.monthsDesc) {
+      message += `\nDetails: ${member.monthsDesc}`;
+    }
+  } else {
+    message += `\n*Remaining outstanding:*\n`;
+    message += `• Pending months: *${member.remainingMonths} month(s)*\n`;
+    message += `• Amount due: *₹${member.totalRemaining.toLocaleString("en-IN")}*\n`;
+    message += `• Rate: ₹${member.rate}/month`;
+    if (member.monthsDesc) {
+      message += `\n• Details: ${member.monthsDesc}`;
+    }
+    message += `\n\nPlease clear the remaining dues when possible.`;
+  }
+
+  message += `\n\nJazakAllah for your support!`;
+  return message;
+}
+
+function detectPaymentFromEdit(before, after) {
+  if (!before || !after) return null;
+
+  const monthsReduced = before.remainingMonths - after.remainingMonths;
+  const becameFullyPaid = after.remainingMonths === 0 || after.status === "PAID";
+
+  if (monthsReduced <= 0 && !becameFullyPaid) return null;
+  if (before.remainingMonths === 0 && monthsReduced <= 0) return null;
+
+  let monthsPaid = monthsReduced;
+  if (becameFullyPaid && monthsPaid <= 0) {
+    monthsPaid = before.remainingMonths;
+  }
+
+  if (monthsPaid <= 0) return null;
+
+  return {
+    monthsPaid,
+    amountPaid: before.rate * monthsPaid,
+    method: after.method
+  };
+}
+
+function promptPaymentThankYou(member, paymentInfo) {
+  const message = buildThankYouMessage(member, paymentInfo);
+  if (!formatWhatsAppPhone(member.phone)) {
+    showToast("Payment saved. No phone on record — use WhatsApp picker to send thank-you.");
+  }
+  if (confirm("Payment recorded! Open WhatsApp to send a thank-you message?")) {
+    openWhatsApp(member, message);
+  }
+}
+
+// Pre-fill WhatsApp message and redirect
 window.sendWhatsAppReminder = function(index) {
   const member = state.members.find(m => m.index.toString() === index.toString());
   if (!member) return;
 
-  const isPaid = member.status === "PAID";
-  let message = "";
+  const isPaid = member.status === "PAID" || member.remainingMonths === 0;
+  const message = isPaid
+    ? buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method })
+    : `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
 
-  if (isPaid) {
-    message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Receipt*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nStatus: *PAID* ✅\nMethod: *${member.method}*\nDetails: ${member.monthsDesc || 'Paid up-to-date.'}\n\nJazakAllah for your support!`;
-  } else {
-    message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
-  }
-
-  const encodedText = encodeURIComponent(message);
-  let phoneVal = member.phone ? String(member.phone).trim().replace(/[^0-9]/g, "") : "";
-  // Strip any leading zeros
-  phoneVal = phoneVal.replace(/^0+/, "");
-  
-  let waPhone = phoneVal;
-  if (waPhone.length === 10) {
-    waPhone = "91" + waPhone;
-  }
-  
-  let waUrl = "";
-  if (waPhone) {
-    waUrl = `https://wa.me/${waPhone}?text=${encodedText}`;
-  } else {
-    // Fallback if there is no phone number: opens WhatsApp contact selector
-    waUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-  }
-  
-  window.open(waUrl, "_blank");
+  openWhatsApp(member, message);
 };
 
 // Modal Operations
@@ -692,6 +757,8 @@ async function handleQuickPaySubmit(e) {
 
   const methodVal = elements.qpMethod.value;
   const bankMoneyVal = methodVal === "Cash" ? 0 : member.totalRemaining;
+  const monthsPaid = member.remainingMonths;
+  const amountPaid = member.totalRemaining;
 
   const submitUrl = window.APP_CONFIG.submitUrl;
   
@@ -699,16 +766,21 @@ async function handleQuickPaySubmit(e) {
   if (state.connectionStatus === "offline" || !submitUrl) {
     const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
     if (localIdx !== -1) {
-      state.members[localIdx].status = "PAID";
-      state.members[localIdx].method = methodVal;
-      state.members[localIdx].bankMoney = bankMoneyVal;
-      state.members[localIdx].remainingMonths = 0;
-      state.members[localIdx].totalRemaining = 0;
-      state.members[localIdx].monthsDesc = "PAID UP TO DATE";
-      
+      const updatedMember = {
+        ...state.members[localIdx],
+        status: "PAID",
+        method: methodVal,
+        bankMoney: bankMoneyVal,
+        remainingMonths: 0,
+        totalRemaining: 0,
+        monthsDesc: "PAID UP TO DATE"
+      };
+      state.members[localIdx] = updatedMember;
+
       applyFilters();
       showToast("🎉 Record updated locally!");
       closeQuickPayModal();
+      promptPaymentThankYou(updatedMember, { monthsPaid, amountPaid, method: methodVal });
     }
     return;
   }
@@ -741,16 +813,21 @@ async function handleQuickPaySubmit(e) {
     if (result.status === "success") {
       const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
       if (localIdx !== -1) {
-        state.members[localIdx].status = "PAID";
-        state.members[localIdx].method = methodVal;
-        state.members[localIdx].bankMoney = bankMoneyVal;
-        state.members[localIdx].remainingMonths = 0;
-        state.members[localIdx].totalRemaining = 0;
-        state.members[localIdx].monthsDesc = "PAID UP TO DATE";
+        const updatedMember = {
+          ...state.members[localIdx],
+          status: "PAID",
+          method: methodVal,
+          bankMoney: bankMoneyVal,
+          remainingMonths: 0,
+          totalRemaining: 0,
+          monthsDesc: "PAID UP TO DATE"
+        };
+        state.members[localIdx] = updatedMember;
+        showToast("🎉 Status updated successfully!");
+        applyFilters();
+        closeQuickPayModal();
+        promptPaymentThankYou(updatedMember, { monthsPaid, amountPaid, method: methodVal });
       }
-      showToast("🎉 Status updated successfully!");
-      applyFilters();
-      closeQuickPayModal();
     } else {
       throw new Error(result.message || "Write rejected by Apps Script");
     }
@@ -904,6 +981,9 @@ async function handleFormSubmit(e) {
 
   const submitUrl = window.APP_CONFIG.submitUrl;
   const isEditing = state.editIndex !== null;
+  const memberBeforeEdit = isEditing
+    ? state.members.find(m => m.index.toString() === state.editIndex.toString())
+    : null;
 
   let bankMoneyVal = 0;
   if (elements.method.value === "UPI") {
@@ -954,6 +1034,10 @@ async function handleFormSubmit(e) {
       const localIdx = state.members.findIndex(m => m.index.toString() === state.editIndex.toString());
       if (localIdx !== -1) state.members[localIdx] = newRecord;
       showToast("🎉 Record updated locally!");
+      const paymentInfo = detectPaymentFromEdit(memberBeforeEdit, newRecord);
+      if (paymentInfo) {
+        promptPaymentThankYou(newRecord, paymentInfo);
+      }
     } else {
       state.members.push(newRecord);
       showToast("🎉 Record added locally!");
@@ -992,6 +1076,10 @@ async function handleFormSubmit(e) {
         const localIdx = state.members.findIndex(m => m.index.toString() === state.editIndex.toString());
         if (localIdx !== -1) state.members[localIdx] = updatedRecord;
         showToast("🎉 Record updated successfully!");
+        const paymentInfo = detectPaymentFromEdit(memberBeforeEdit, updatedRecord);
+        if (paymentInfo) {
+          promptPaymentThankYou(updatedRecord, paymentInfo);
+        }
       } else {
         state.members.push(updatedRecord);
         showToast("🎉 Record added successfully!");
