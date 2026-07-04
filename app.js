@@ -722,10 +722,10 @@ function autoCalculateTotal() {
   }
 }
 
-// Insert - or / at cursor in Last Bill Number (for iPhone numeric keyboard)
+// Insert − or / at cursor in Last Bill Number (iPhone numeric keyboard has no − or /)
 function insertBillNumberChar(char) {
   const input = elements.lastBillNumber;
-  if (!input) return;
+  if (!input || !char) return;
 
   const start = input.selectionStart ?? input.value.length;
   const end = input.selectionEnd ?? input.value.length;
@@ -1190,7 +1190,7 @@ function setupEventListeners() {
   // Submit form
   elements.memberForm.addEventListener("submit", handleFormSubmit);
 
-  // Last Bill Number separator buttons (iPhone)
+  // Last Bill Number − and / buttons
   document.querySelectorAll(".bill-char-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       insertBillNumberChar(btn.dataset.char || "");

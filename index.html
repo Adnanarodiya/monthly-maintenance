@@ -216,12 +216,11 @@
         <div class="form-group">
           <label for="last-bill-number">Last Bill Number</label>
           <div class="bill-number-input-row">
-            <input type="text" id="last-bill-number" inputmode="text" autocomplete="off"
-              placeholder="e.g. 6-123 or 6/123" title="Numbers with - or / separator" />
+            <input type="text" id="last-bill-number" inputmode="numeric" autocomplete="off"
+              placeholder="e.g. 6-123 or 6/123" aria-label="Last bill number" />
             <button type="button" class="bill-char-btn" data-char="-" aria-label="Insert dash">−</button>
-            <button type="button" class="bill-char-btn" data-char="/" aria-label="Insert slash">/</button>
+          
           </div>
-          <span class="field-hint">Tap − or / to insert separator (iPhone friendly)</span>
           <span class="error-msg" id="last-bill-number-error"></span>
         </div>
 
