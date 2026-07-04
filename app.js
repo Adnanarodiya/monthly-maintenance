@@ -45,6 +45,7 @@ const elements = {
   status: document.getElementById("status"),
   ownerName: document.getElementById("owner-name"),
   phone: document.getElementById("phone"),
+  lastBillNumber: document.getElementById("last-bill-number"),
   monthsDesc: document.getElementById("months-desc"),
   rate: document.getElementById("rate"),
   remainingMonths: document.getElementById("remaining-months"),
@@ -56,6 +57,7 @@ const elements = {
   ownerNameError: document.getElementById("owner-name-error"),
   rateError: document.getElementById("rate-error"),
   remainingMonthsError: document.getElementById("remaining-months-error"),
+  lastBillNumberError: document.getElementById("last-bill-number-error"),
 
   // Quick Pay Modal elements
   qpOverlay: document.getElementById("quickpay-overlay"),
@@ -336,6 +338,7 @@ function parseCSV(text) {
     const rate = Number(cols[7]) || 0;
     const totalRemaining = Number(cols[9]) || (rate * remainingMonths);
     const phone = cols[10] || "";
+    const lastBillNumber = cols[11] || "";
 
     records.push({
       index: indexVal,
@@ -348,7 +351,8 @@ function parseCSV(text) {
       rate: rate,
       remainingMonths: remainingMonths,
       totalRemaining: totalRemaining,
-      phone: phone.trim()
+      phone: phone.trim(),
+      lastBillNumber: lastBillNumber.trim()
     });
   }
   return records;
@@ -419,6 +423,7 @@ function applyFilters() {
       m.bungalow.toLowerCase().includes(query) ||
       m.ownerName.toLowerCase().includes(query) ||
       (m.phone && String(m.phone).toLowerCase().includes(query)) ||
+      (m.lastBillNumber && String(m.lastBillNumber).toLowerCase().includes(query)) ||
       m.monthsDesc.toLowerCase().includes(query);
   });
 
@@ -480,6 +485,14 @@ function renderMembers(list) {
             <div class="remarks-box">
               <i class="ti ti-info-circle"></i>
               <span>${m.monthsDesc}</span>
+            </div>
+          ` : ""}
+
+          ${m.lastBillNumber ? `
+            <div class="payment-meta-row" style="margin-top: 0.5rem;">
+              <div class="payment-meta-item">
+                <i class="ti ti-receipt"></i> Last Bill No.: <strong>${m.lastBillNumber}</strong>
+              </div>
             </div>
           ` : ""}
 
@@ -678,11 +691,13 @@ function resetForm() {
   elements.ownerName.classList.remove("invalid");
   elements.rate.classList.remove("invalid");
   elements.remainingMonths.classList.remove("invalid");
+  elements.lastBillNumber.classList.remove("invalid");
   
   elements.bungalowError.textContent = "";
   elements.ownerNameError.textContent = "";
   elements.rateError.textContent = "";
   elements.remainingMonthsError.textContent = "";
+  elements.lastBillNumberError.textContent = "";
   
   // Set default values
   elements.rate.value = 700;
@@ -852,6 +867,7 @@ window.triggerEdit = function(index) {
   elements.status.value = member.status;
   elements.ownerName.value = member.ownerName;
   elements.phone.value = member.phone || "";
+  elements.lastBillNumber.value = member.lastBillNumber || "";
   elements.monthsDesc.value = member.monthsDesc;
   elements.rate.value = member.rate;
   elements.remainingMonths.value = member.remainingMonths;
@@ -937,10 +953,12 @@ async function handleFormSubmit(e) {
   elements.ownerName.classList.remove("invalid");
   elements.rate.classList.remove("invalid");
   elements.remainingMonths.classList.remove("invalid");
+  elements.lastBillNumber.classList.remove("invalid");
   elements.bungalowError.textContent = "";
   elements.ownerNameError.textContent = "";
   elements.rateError.textContent = "";
   elements.remainingMonthsError.textContent = "";
+  elements.lastBillNumberError.textContent = "";
 
   let isValid = true;
 
@@ -948,6 +966,7 @@ async function handleFormSubmit(e) {
   const ownerVal = elements.ownerName.value.trim();
   const rateVal = Number(elements.rate.value);
   const remainingMonthsVal = Number(elements.remainingMonths.value);
+  const lastBillNumberVal = elements.lastBillNumber.value.trim();
 
   if (!bungalowVal) {
     elements.bungalow.classList.add("invalid");
@@ -970,6 +989,12 @@ async function handleFormSubmit(e) {
   if (isNaN(remainingMonthsVal) || remainingMonthsVal < 0) {
     elements.remainingMonths.classList.add("invalid");
     elements.remainingMonthsError.textContent = "Please enter a valid count (>=0).";
+    isValid = false;
+  }
+
+  if (lastBillNumberVal && !/^[\d\-\/]+$/.test(lastBillNumberVal)) {
+    elements.lastBillNumber.classList.add("invalid");
+    elements.lastBillNumberError.textContent = "Use numbers only (e.g. 6-123 or 6/123).";
     isValid = false;
   }
 
@@ -1010,6 +1035,7 @@ async function handleFormSubmit(e) {
     status: elements.status.value,
     ownerName: ownerVal,
     phone: elements.phone.value.trim(),
+    lastBillNumber: lastBillNumberVal,
     monthsDesc: elements.monthsDesc.value.trim(),
     rate: rateVal,
     remainingMonths: remainingMonthsVal,

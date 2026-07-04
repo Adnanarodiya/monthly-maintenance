@@ -212,6 +212,14 @@
           <input type="tel" id="phone" placeholder="e.g. 9876543210" />
         </div>
 
+        <!-- Last Bill Number -->
+        <div class="form-group">
+          <label for="last-bill-number">Last Bill Number</label>
+          <input type="text" id="last-bill-number" inputmode="numeric" pattern="[\d\-\/]+"
+            placeholder="e.g. 6-123 or 6/123" title="Numbers only (use - or / as separator)" />
+          <span class="error-msg" id="last-bill-number-error"></span>
+        </div>
+
         <!-- Months & Remarks -->
         <div class="form-group">
           <label for="months-desc">Month's Details / Remarks</label>

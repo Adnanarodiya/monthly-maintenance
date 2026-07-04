@@ -56,7 +56,8 @@ function doGet(e) {
         rate: Number(row[7]) || 0,
         remainingMonths: remainingMonths,
         totalRemaining: Number(row[9]) || 0,
-        phone: row[10] || ""
+        phone: row[10] || "",
+        lastBillNumber: row[11] || ""
       });
     }
     
@@ -104,6 +105,7 @@ function doPost(e) {
       const monthsDesc = payload.monthsDesc || "";
       const totalRemaining = rate * remainingMonths;
       const phone = payload.phone || "";
+      const lastBillNumber = payload.lastBillNumber || "";
       
       const newRow = [
         nextIndex,         // Column A: NO:-
@@ -116,7 +118,8 @@ function doPost(e) {
         rate,              // Column H: Rate
         remainingMonths,   // Column I: Remaining Months
         totalRemaining,    // Column J: Total Remaining
-        phone              // Column K: Phone Number
+        phone,             // Column K: Phone Number
+        lastBillNumber     // Column L: Last Bill Number
       ];
       
       sheet.appendRow(newRow);
@@ -148,6 +151,7 @@ function doPost(e) {
       if (payload.rate !== undefined) sheet.getRange(foundRowIndex, 8).setValue(Number(payload.rate));
       if (payload.remainingMonths !== undefined) sheet.getRange(foundRowIndex, 9).setValue(Number(payload.remainingMonths));
       if (payload.phone !== undefined) sheet.getRange(foundRowIndex, 11).setValue(payload.phone);
+      if (payload.lastBillNumber !== undefined) sheet.getRange(foundRowIndex, 12).setValue(payload.lastBillNumber);
       
       // Re-calculate Status and Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);
