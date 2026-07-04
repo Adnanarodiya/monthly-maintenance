@@ -722,6 +722,25 @@ function autoCalculateTotal() {
   }
 }
 
+// Insert - or / at cursor in Last Bill Number (for iPhone numeric keyboard)
+function insertBillNumberChar(char) {
+  const input = elements.lastBillNumber;
+  if (!input) return;
+
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  const nextValue = input.value.slice(0, start) + char + input.value.slice(end);
+
+  if (!/^[\d\-\/]*$/.test(nextValue)) return;
+
+  input.value = nextValue;
+  const cursor = start + char.length;
+  input.setSelectionRange(cursor, cursor);
+  input.focus();
+  input.classList.remove("invalid");
+  if (elements.lastBillNumberError) elements.lastBillNumberError.textContent = "";
+}
+
 // Form input change calculations
 elements.rate.addEventListener("input", autoCalculateTotal);
 elements.remainingMonths.addEventListener("input", autoCalculateTotal);
@@ -1170,6 +1189,13 @@ function setupEventListeners() {
 
   // Submit form
   elements.memberForm.addEventListener("submit", handleFormSubmit);
+
+  // Last Bill Number separator buttons (iPhone)
+  document.querySelectorAll(".bill-char-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      insertBillNumberChar(btn.dataset.char || "");
+    });
+  });
 
   // ESC to close modal
   document.addEventListener("keydown", (e) => {
