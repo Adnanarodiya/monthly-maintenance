@@ -79,9 +79,50 @@ const elements = {
 
 // Initial Setup
 document.addEventListener("DOMContentLoaded", () => {
+  initMobileViewportLock();
   initSecurityGate();
   registerServiceWorker();
 });
+
+let openOverlayCount = 0;
+
+function lockMobilePage() {
+  openOverlayCount++;
+  document.body.classList.add("mobile-locked");
+}
+
+function unlockMobilePage() {
+  openOverlayCount = Math.max(0, openOverlayCount - 1);
+  if (openOverlayCount === 0) {
+    document.body.classList.remove("mobile-locked");
+  }
+}
+
+function initMobileViewportLock() {
+  // Block pinch-to-zoom in installed PWA (iOS Safari + Android Chrome)
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("gesturechange", (e) => e.preventDefault());
+  document.addEventListener("gestureend", (e) => e.preventDefault());
+
+  document.addEventListener("touchstart", (e) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Keep layout stable when the on-screen keyboard opens (Android + iOS)
+  if (window.visualViewport) {
+    const syncViewportOffset = () => {
+      const offsetX = window.visualViewport.offsetLeft || 0;
+      if (offsetX !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+
+    window.visualViewport.addEventListener("resize", syncViewportOffset);
+    window.visualViewport.addEventListener("scroll", syncViewportOffset);
+  }
+}
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -112,11 +153,13 @@ function initSecurityGate() {
   if (isUnlocked) {
     if (lockScreen) lockScreen.style.display = "none";
     if (appShell) appShell.style.display = "flex";
+    unlockMobilePage();
     fetchData();
     setupEventListeners();
   } else {
     if (lockScreen) lockScreen.style.display = "flex";
     if (appShell) appShell.style.display = "none";
+    lockMobilePage();
     setupSecurityEventListeners();
   }
 }
@@ -675,6 +718,7 @@ function openModal() {
   
   elements.modalOverlay.classList.add("open");
   elements.modalOverlay.setAttribute("aria-hidden", "false");
+  lockMobilePage();
   elements.bungalow.focus();
   resetForm();
 }
@@ -682,6 +726,7 @@ function openModal() {
 function closeModal() {
   elements.modalOverlay.classList.remove("open");
   elements.modalOverlay.setAttribute("aria-hidden", "true");
+  unlockMobilePage();
   resetForm();
 }
 
@@ -722,7 +767,7 @@ function autoCalculateTotal() {
   }
 }
 
-// Insert − or / at cursor in Last Bill Number (iPhone numeric keyboard has no − or /)
+// Insert − or / at cursor in Last Bill Number (mobile numeric keyboards often lack − or /)
 function insertBillNumberChar(char) {
   const input = elements.lastBillNumber;
   if (!input || !char) return;
@@ -770,12 +815,14 @@ window.triggerQuickPay = function(index) {
   // Open modal
   elements.qpOverlay.classList.add("open");
   elements.qpOverlay.setAttribute("aria-hidden", "false");
+  lockMobilePage();
   elements.qpMethod.focus();
 };
 
 function closeQuickPayModal() {
   elements.qpOverlay.classList.remove("open");
   elements.qpOverlay.setAttribute("aria-hidden", "true");
+  unlockMobilePage();
   elements.qpForm.reset();
   state.quickPayIndex = null;
 }
@@ -899,6 +946,7 @@ window.triggerEdit = function(index) {
   
   elements.modalOverlay.classList.add("open");
   elements.modalOverlay.setAttribute("aria-hidden", "false");
+  lockMobilePage();
   elements.bungalow.focus();
 };
 

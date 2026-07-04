@@ -46,6 +46,16 @@
 }
 
 /* Base Resets */
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -57,12 +67,39 @@ body {
   font-family: var(--font-body);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   line-height: 1.5;
-  overflow: hidden; /* Lock viewport for mobile */
+  overflow: hidden;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+  position: fixed;
+  inset: 0;
+}
+
+body.mobile-locked .app-content {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* Mobile PWA: 16px+ inputs prevent auto-zoom on focus (iOS + Android) */
+input,
+select,
+textarea,
+button {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+  max-width: 100%;
 }
 
 .sr-only {
@@ -78,8 +115,9 @@ body {
 
 /* Mobile Wrapper Container */
 .app-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
   max-width: 480px; /* Lock to mobile dimensions */
   background-color: var(--bg-secondary);
   position: relative;
@@ -87,6 +125,7 @@ body {
   flex-direction: column;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* App Header */
@@ -159,8 +198,11 @@ body {
 .app-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
   padding-bottom: 80px; /* spacing to prevent overlapping bottom nav */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Panels */
@@ -207,7 +249,7 @@ body {
   width: 100%;
   padding: 10px 36px 10px 36px;
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 16px;
   color: var(--text-primary);
   background-color: var(--bg-primary);
   border: 1.5px solid transparent;
@@ -680,6 +722,7 @@ body {
 .modal-overlay.open {
   opacity: 1;
   visibility: visible;
+  overscroll-behavior: none;
 }
 
 .modal-container {
@@ -688,6 +731,11 @@ body {
   border-top-right-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
+  max-height: min(92dvh, 100%);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transform: translateY(100%);
   transition: transform 0.25s cubic-bezier(0.1, 0.7, 0.1, 1);
   padding-bottom: env(safe-area-inset-bottom);
@@ -725,6 +773,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .form-group {
@@ -736,6 +786,12 @@ body {
 .form-group-row {
   display: flex;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.form-group-row .form-group {
+  flex: 1;
+  min-width: 0;
 }
 
 .form-group label {
@@ -751,7 +807,8 @@ body {
 .form-group input, .form-select {
   padding: 8px 10px;
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 16px;
+  width: 100%;
   color: var(--text-primary);
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
@@ -945,6 +1002,8 @@ body {
   align-items: center;
   z-index: 9999;
   padding: 1.5rem;
+  overflow: hidden;
+  overscroll-behavior: none;
   transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
