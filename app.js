@@ -9,7 +9,8 @@ let state = {
   searchQuery: "",
   connectionStatus: "loading", // 'loading', 'online', 'offline'
   editIndex: null, // null = Add mode, otherwise contains target index/ID
-  quickPayIndex: null // Track bungalow index currently in Quick Pay modal
+  quickPayIndex: null, // Track bungalow index currently in Quick Pay modal
+  pendingWhatsApp: null // Stored message for thank-you modal
 };
 
 // DOM References
@@ -46,6 +47,7 @@ const elements = {
   ownerName: document.getElementById("owner-name"),
   phone: document.getElementById("phone"),
   lastBillNumber: document.getElementById("last-bill-number"),
+  paymentDate: document.getElementById("payment-date"),
   monthsDesc: document.getElementById("months-desc"),
   rate: document.getElementById("rate"),
   remainingMonths: document.getElementById("remaining-months"),
@@ -69,6 +71,13 @@ const elements = {
   qpForm: document.getElementById("quickpay-form"),
   qpSubmitBtn: document.getElementById("submit-quickpay-btn"),
   qpSpinner: document.getElementById("quickpay-spinner"),
+
+  // WhatsApp thank-you modal
+  waOverlay: document.getElementById("whatsapp-overlay"),
+  waOpenBtn: document.getElementById("wa-open-btn"),
+  waSkipBtn: document.getElementById("wa-skip-btn"),
+  waCloseBtn: document.getElementById("close-whatsapp-btn"),
+  waPromptText: document.getElementById("whatsapp-prompt-text"),
 
   // Tab Navigation Elements
   navBtnList: document.getElementById("nav-btn-list"),
@@ -382,6 +391,7 @@ function parseCSV(text) {
     const totalRemaining = Number(cols[9]) || (rate * remainingMonths);
     const phone = cols[10] || "";
     const lastBillNumber = cols[11] || "";
+    const paymentDate = normalizeDateForInput(cols[12] || "");
 
     records.push({
       index: indexVal,
@@ -395,7 +405,8 @@ function parseCSV(text) {
       remainingMonths: remainingMonths,
       totalRemaining: totalRemaining,
       phone: phone.trim(),
-      lastBillNumber: lastBillNumber.trim()
+      lastBillNumber: lastBillNumber.trim(),
+      paymentDate: paymentDate
     });
   }
   return records;
@@ -531,11 +542,18 @@ function renderMembers(list) {
             </div>
           ` : ""}
 
-          ${m.lastBillNumber ? `
+          ${m.lastBillNumber || m.paymentDate ? `
             <div class="payment-meta-row" style="margin-top: 0.5rem;">
-              <div class="payment-meta-item">
-                <i class="ti ti-receipt"></i> Last Bill No.: <strong>${m.lastBillNumber}</strong>
-              </div>
+              ${m.lastBillNumber ? `
+                <div class="payment-meta-item">
+                  <i class="ti ti-receipt"></i> Last Bill No.: <strong>${m.lastBillNumber}</strong>
+                </div>
+              ` : ""}
+              ${m.paymentDate ? `
+                <div class="payment-meta-item">
+                  <i class="ti ti-calendar"></i> Payment Date: <strong>${formatDateDisplay(m.paymentDate)}</strong>
+                </div>
+              ` : ""}
             </div>
           ` : ""}
 
@@ -617,16 +635,60 @@ function formatWhatsAppPhone(phone) {
   return phoneVal.length === 10 ? "91" + phoneVal : phoneVal;
 }
 
-function openWhatsApp(member, message) {
+function normalizeDateForInput(value) {
+  if (!value) return "";
+  const str = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  return "";
+}
+
+function getTodayDateString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function buildWhatsAppUrl(member, message) {
   const encodedText = encodeURIComponent(message);
   const waPhone = formatWhatsAppPhone(member.phone);
-
-  const waUrl = waPhone
+  return waPhone
     ? `https://wa.me/${waPhone}?text=${encodedText}`
     : `https://api.whatsapp.com/send?text=${encodedText}`;
+}
 
-  window.open(waUrl, "_blank");
+function openWhatsApp(member, message) {
+  const waUrl = buildWhatsAppUrl(member, message);
+
+  // Mobile PWA blocks window.open after async — navigate directly to WhatsApp
+  window.location.href = waUrl;
   return true;
+}
+
+function openWhatsAppModal() {
+  elements.waOverlay.classList.add("open");
+  elements.waOverlay.setAttribute("aria-hidden", "false");
+  lockMobilePage();
+}
+
+function closeWhatsAppModal() {
+  elements.waOverlay.classList.remove("open");
+  elements.waOverlay.setAttribute("aria-hidden", "true");
+  unlockMobilePage();
+  state.pendingWhatsApp = null;
 }
 
 function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
@@ -689,12 +751,17 @@ function detectPaymentFromEdit(before, after) {
 
 function promptPaymentThankYou(member, paymentInfo) {
   const message = buildThankYouMessage(member, paymentInfo);
-  if (!formatWhatsAppPhone(member.phone)) {
-    showToast("Payment saved. No phone on record — use WhatsApp picker to send thank-you.");
+  const hasPhone = !!formatWhatsAppPhone(member.phone);
+
+  state.pendingWhatsApp = { member, message };
+
+  if (elements.waPromptText) {
+    elements.waPromptText.textContent = hasPhone
+      ? `Payment saved for Bungalow ${member.bungalow}. Tap Open WhatsApp to send thank-you to ${member.ownerName}.`
+      : "Payment saved. No phone on record — WhatsApp will open so you can pick a contact.";
   }
-  if (confirm("Payment recorded! Open WhatsApp to send a thank-you message?")) {
-    openWhatsApp(member, message);
-  }
+
+  openWhatsAppModal();
 }
 
 // Pre-fill WhatsApp message and redirect
@@ -854,7 +921,8 @@ async function handleQuickPaySubmit(e) {
         bankMoney: bankMoneyVal,
         remainingMonths: 0,
         totalRemaining: 0,
-        monthsDesc: "PAID UP TO DATE"
+        monthsDesc: "PAID UP TO DATE",
+        paymentDate: getTodayDateString()
       };
       state.members[localIdx] = updatedMember;
 
@@ -877,7 +945,8 @@ async function handleQuickPaySubmit(e) {
     method: methodVal,
     bankMoney: bankMoneyVal,
     remainingMonths: 0,
-    monthsDesc: "PAID UP TO DATE"
+    monthsDesc: "PAID UP TO DATE",
+    paymentDate: getTodayDateString()
   };
 
   try {
@@ -901,7 +970,8 @@ async function handleQuickPaySubmit(e) {
           bankMoney: bankMoneyVal,
           remainingMonths: 0,
           totalRemaining: 0,
-          monthsDesc: "PAID UP TO DATE"
+          monthsDesc: "PAID UP TO DATE",
+          paymentDate: getTodayDateString()
         };
         state.members[localIdx] = updatedMember;
         showToast("🎉 Status updated successfully!");
@@ -934,6 +1004,7 @@ window.triggerEdit = function(index) {
   elements.ownerName.value = member.ownerName;
   elements.phone.value = member.phone || "";
   elements.lastBillNumber.value = member.lastBillNumber || "";
+  elements.paymentDate.value = normalizeDateForInput(member.paymentDate || "");
   elements.monthsDesc.value = member.monthsDesc;
   elements.rate.value = member.rate;
   elements.remainingMonths.value = member.remainingMonths;
@@ -1103,6 +1174,7 @@ async function handleFormSubmit(e) {
     ownerName: ownerVal,
     phone: elements.phone.value.trim(),
     lastBillNumber: lastBillNumberVal,
+    paymentDate: elements.paymentDate.value,
     monthsDesc: elements.monthsDesc.value.trim(),
     rate: rateVal,
     remainingMonths: remainingMonthsVal,
@@ -1245,6 +1317,29 @@ function setupEventListeners() {
     });
   });
 
+  // WhatsApp thank-you modal
+  if (elements.waOpenBtn) {
+    elements.waOpenBtn.addEventListener("click", () => {
+      if (!state.pendingWhatsApp) return;
+      const { member, message } = state.pendingWhatsApp;
+      closeWhatsAppModal();
+      openWhatsApp(member, message);
+    });
+  }
+  if (elements.waSkipBtn) {
+    elements.waSkipBtn.addEventListener("click", closeWhatsAppModal);
+  }
+  if (elements.waCloseBtn) {
+    elements.waCloseBtn.addEventListener("click", closeWhatsAppModal);
+  }
+  if (elements.waOverlay) {
+    elements.waOverlay.addEventListener("click", (e) => {
+      if (e.target === elements.waOverlay) {
+        closeWhatsAppModal();
+      }
+    });
+  }
+
   // ESC to close modal
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -1253,6 +1348,9 @@ function setupEventListeners() {
       }
       if (elements.qpOverlay.classList.contains("open")) {
         closeQuickPayModal();
+      }
+      if (elements.waOverlay && elements.waOverlay.classList.contains("open")) {
+        closeWhatsAppModal();
       }
     }
   });

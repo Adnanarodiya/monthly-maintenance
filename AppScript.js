@@ -16,6 +16,14 @@
 
 const SHEET_NAME = "Sheet1"; // Change if your sheet has a different name
 
+function formatSheetDate(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(val);
+}
+
 // Helper to set CORS and JSON headers
 function outputJSON(object) {
   return ContentService.createTextOutput(JSON.stringify(object))
@@ -57,7 +65,8 @@ function doGet(e) {
         remainingMonths: remainingMonths,
         totalRemaining: Number(row[9]) || 0,
         phone: row[10] || "",
-        lastBillNumber: row[11] || ""
+        lastBillNumber: row[11] || "",
+        paymentDate: formatSheetDate(row[12])
       });
     }
     
@@ -106,6 +115,7 @@ function doPost(e) {
       const totalRemaining = rate * remainingMonths;
       const phone = payload.phone || "";
       const lastBillNumber = payload.lastBillNumber || "";
+      const paymentDate = payload.paymentDate || "";
       
       const newRow = [
         nextIndex,         // Column A: NO:-
@@ -119,7 +129,8 @@ function doPost(e) {
         remainingMonths,   // Column I: Remaining Months
         totalRemaining,    // Column J: Total Remaining
         phone,             // Column K: Phone Number
-        lastBillNumber     // Column L: Last Bill Number
+        lastBillNumber,    // Column L: Last Bill Number
+        paymentDate        // Column M: Payment Date
       ];
       
       sheet.appendRow(newRow);
@@ -152,6 +163,7 @@ function doPost(e) {
       if (payload.remainingMonths !== undefined) sheet.getRange(foundRowIndex, 9).setValue(Number(payload.remainingMonths));
       if (payload.phone !== undefined) sheet.getRange(foundRowIndex, 11).setValue(payload.phone);
       if (payload.lastBillNumber !== undefined) sheet.getRange(foundRowIndex, 12).setValue(payload.lastBillNumber);
+      if (payload.paymentDate !== undefined) sheet.getRange(foundRowIndex, 13).setValue(payload.paymentDate);
       
       // Re-calculate Status and Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);

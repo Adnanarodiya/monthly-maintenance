@@ -538,6 +538,34 @@ textarea {
   fill: currentColor;
 }
 
+.whatsapp-prompt-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.25rem;
+}
+
+.btn-whatsapp-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  background-color: var(--color-whatsapp);
+  color: #ffffff;
+  border: none;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn-whatsapp-open:active {
+  background-color: var(--color-whatsapp-hover);
+}
+
 .btn-paid-status {
   display: flex;
   align-items: center;
