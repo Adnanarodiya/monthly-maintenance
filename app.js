@@ -662,6 +662,10 @@ function formatDateDisplay(dateStr) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function getWhatsAppDateLine() {
+  return `Date: *${formatDateDisplay(getTodayDateString())}*`;
+}
+
 function buildWhatsAppUrl(member, message) {
   const encodedText = encodeURIComponent(message);
   const waPhone = formatWhatsAppPhone(member.phone);
@@ -695,7 +699,7 @@ function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
   const isFullyPaid = member.remainingMonths === 0 || member.status === "PAID";
   const monthsLabel = monthsPaid === 1 ? "1 month" : `${monthsPaid} months`;
 
-  let message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
+  let message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\n${getWhatsAppDateLine()}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
 
   if (monthsPaid > 0) {
     message += `You paid: *${monthsLabel}* maintenance (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
@@ -772,7 +776,7 @@ window.sendWhatsAppReminder = function(index) {
   const isPaid = member.status === "PAID" || member.remainingMonths === 0;
   const message = isPaid
     ? buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method })
-    : `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
+    : `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine()}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
 
   openWhatsApp(member, message);
 };
