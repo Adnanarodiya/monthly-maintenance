@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
   <!-- Style Link -->
-  <link rel="stylesheet" href="style.css?v=1.0.3">
+  <link rel="stylesheet" href="style.css?v=1.0.5">
 
   <!-- PWA & Mobile Icons -->
   <link rel="manifest" href="manifest.json">
@@ -315,6 +315,68 @@
           <button type="submit" class="btn-primary" id="submit-quickpay-btn">
             <span class="btn-text">Confirm Paid</span>
             <div class="btn-spinner" id="quickpay-spinner" aria-hidden="true"></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Advance Payment Modal Overlay -->
+  <div class="modal-overlay" id="advance-overlay" aria-hidden="true" role="dialog" aria-labelledby="advance-title">
+    <div class="modal-container" style="max-width: 420px;">
+      <header class="modal-header">
+        <h2 class="modal-title" id="advance-title">Record Advance Payment</h2>
+        <button class="btn-modal-close" id="close-advance-btn" aria-label="Close dialog">
+          <i class="ti ti-x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <form class="modal-form" id="advance-form" novalidate>
+        <div class="total-remaining-display" style="background-color: var(--bg-tertiary); margin-bottom: 0.5rem;">
+          <div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Bungalow</span>
+            <strong id="adv-bungalow-display" style="color: var(--text-primary); font-size: 1.1rem;">A-1/A</strong>
+          </div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Monthly Rate</span>
+            <strong id="adv-rate-display" style="color: var(--text-primary); font-size: 1.1rem;">₹700</strong>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="adv-from-date">Paid From <span class="required">*</span></label>
+          <input type="date" id="adv-from-date" required aria-label="Advance coverage start date" />
+        </div>
+
+        <div class="form-group">
+          <label for="adv-until-month">Paid Until (Month) <span class="required">*</span></label>
+          <input type="month" id="adv-until-month" required aria-label="Advance coverage end month" />
+        </div>
+
+        <div class="form-group">
+          <label for="adv-method">Payment Method</label>
+          <select id="adv-method" class="form-select">
+            <option value="Cash">Cash</option>
+            <option value="UPI">GPay / UPI</option>
+          </select>
+        </div>
+
+        <div class="advance-calc-display" id="advance-calc-display">
+          <div class="advance-calc-row">
+            <span>Months covered</span>
+            <strong id="adv-months-display">—</strong>
+          </div>
+          <div class="advance-calc-row">
+            <span>Advance amount</span>
+            <strong id="adv-amount-display" class="advance-amount">₹0</strong>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancel-advance-btn">Cancel</button>
+          <button type="submit" class="btn-primary" id="submit-advance-btn">
+            <span class="btn-text">Save &amp; WhatsApp</span>
+            <div class="btn-spinner" id="advance-spinner" aria-hidden="true"></div>
           </button>
         </div>
       </form>

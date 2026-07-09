@@ -66,7 +66,9 @@ function doGet(e) {
         totalRemaining: Number(row[9]) || 0,
         phone: row[10] || "",
         lastBillNumber: row[11] || "",
-        paymentDate: formatSheetDate(row[12])
+        paymentDate: formatSheetDate(row[12]),
+        coverageStart: formatSheetDate(row[13]),
+        coverageEnd: formatSheetDate(row[14])
       });
     }
     
@@ -116,6 +118,8 @@ function doPost(e) {
       const phone = payload.phone || "";
       const lastBillNumber = payload.lastBillNumber || "";
       const paymentDate = payload.paymentDate || "";
+      const coverageStart = payload.coverageStart || "";
+      const coverageEnd = payload.coverageEnd || "";
       
       const newRow = [
         nextIndex,         // Column A: NO:-
@@ -130,7 +134,9 @@ function doPost(e) {
         totalRemaining,    // Column J: Total Remaining
         phone,             // Column K: Phone Number
         lastBillNumber,    // Column L: Last Bill Number
-        paymentDate        // Column M: Payment Date
+        paymentDate,       // Column M: Payment Date
+        coverageStart,     // Column N: Coverage Start
+        coverageEnd        // Column O: Coverage End
       ];
       
       sheet.appendRow(newRow);
@@ -164,6 +170,8 @@ function doPost(e) {
       if (payload.phone !== undefined) sheet.getRange(foundRowIndex, 11).setValue(payload.phone);
       if (payload.lastBillNumber !== undefined) sheet.getRange(foundRowIndex, 12).setValue(payload.lastBillNumber);
       if (payload.paymentDate !== undefined) sheet.getRange(foundRowIndex, 13).setValue(payload.paymentDate);
+      if (payload.coverageStart !== undefined) sheet.getRange(foundRowIndex, 14).setValue(payload.coverageStart);
+      if (payload.coverageEnd !== undefined) sheet.getRange(foundRowIndex, 15).setValue(payload.coverageEnd);
       
       // Re-calculate Status and Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);
@@ -225,6 +233,21 @@ function performMonthlyRollover() {
       
       const rate = Number(values[i][7]) || 0;
       const currentMonths = Number(values[i][8]) || 0;
+
+      // Skip bungalows with active advance coverage
+      const coverageEndRaw = values[i][14];
+      if (coverageEndRaw) {
+        const coverageEnd = coverageEndRaw instanceof Date
+          ? coverageEndRaw
+          : new Date(coverageEndRaw);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        coverageEnd.setHours(23, 59, 59, 999);
+        if (coverageEnd >= today) {
+          continue;
+        }
+      }
+
       const newMonths = currentMonths + 1;
       const totalRemaining = rate * newMonths;
       

@@ -10,6 +10,7 @@ let state = {
   connectionStatus: "loading", // 'loading', 'online', 'offline'
   editIndex: null, // null = Add mode, otherwise contains target index/ID
   quickPayIndex: null, // Track bungalow index currently in Quick Pay modal
+  advancePayIndex: null, // Track bungalow index in Advance Payment modal
   pendingWhatsApp: null // Stored message for thank-you modal
 };
 
@@ -71,6 +72,21 @@ const elements = {
   qpForm: document.getElementById("quickpay-form"),
   qpSubmitBtn: document.getElementById("submit-quickpay-btn"),
   qpSpinner: document.getElementById("quickpay-spinner"),
+
+  // Advance Payment Modal elements
+  advOverlay: document.getElementById("advance-overlay"),
+  advBungalowDisplay: document.getElementById("adv-bungalow-display"),
+  advRateDisplay: document.getElementById("adv-rate-display"),
+  advFromDate: document.getElementById("adv-from-date"),
+  advUntilMonth: document.getElementById("adv-until-month"),
+  advMethod: document.getElementById("adv-method"),
+  advMonthsDisplay: document.getElementById("adv-months-display"),
+  advAmountDisplay: document.getElementById("adv-amount-display"),
+  advCancelBtn: document.getElementById("cancel-advance-btn"),
+  advCloseBtn: document.getElementById("close-advance-btn"),
+  advForm: document.getElementById("advance-form"),
+  advSubmitBtn: document.getElementById("submit-advance-btn"),
+  advSpinner: document.getElementById("advance-spinner"),
 
   // WhatsApp thank-you modal
   waOverlay: document.getElementById("whatsapp-overlay"),
@@ -392,6 +408,8 @@ function parseCSV(text) {
     const phone = cols[10] || "";
     const lastBillNumber = cols[11] || "";
     const paymentDate = normalizeDateForInput(cols[12] || "");
+    const coverageStart = normalizeDateForInput(cols[13] || "");
+    const coverageEnd = normalizeDateForInput(cols[14] || "");
 
     records.push({
       index: indexVal,
@@ -406,7 +424,9 @@ function parseCSV(text) {
       totalRemaining: totalRemaining,
       phone: phone.trim(),
       lastBillNumber: lastBillNumber.trim(),
-      paymentDate: paymentDate
+      paymentDate: paymentDate,
+      coverageStart: coverageStart,
+      coverageEnd: coverageEnd
     });
   }
   return records;
@@ -504,14 +524,25 @@ function renderMembers(list) {
     const isPaid = m.status === "PAID";
     const statusClass = isPaid ? "paid" : "remaining";
     const outstandingClass = isPaid ? "paid" : "";
-    const escapedOwner = m.ownerName.replace(/'/g, "\\'");
+    const advanceActive = isAdvanceActive(m);
+    const advanceExpiring = isAdvanceExpiringSoon(m);
+    const cardClasses = [
+      statusClass,
+      advanceActive ? "advance" : "",
+      advanceExpiring ? "advance-expiring" : ""
+    ].filter(Boolean).join(" ");
     
     return `
-      <div class="member-card ${statusClass}" id="member-card-${m.index}">
+      <div class="member-card ${cardClasses}" id="member-card-${m.index}">
         <div class="card-header-row">
           <div class="bungalow-tag-wrap">
             <span class="bungalow-num">${m.bungalow}</span>
             <span class="status-badge ${statusClass}">${m.status}</span>
+            ${advanceActive ? `
+              <span class="advance-badge ${advanceExpiring ? "expiring" : ""}" title="Advance maintenance active">
+                <i class="ti ti-calendar-check"></i> Until ${formatMonthYear(m.coverageEnd)}
+              </span>
+            ` : ""}
           </div>
           
           <div class="card-actions-top">
@@ -588,20 +619,22 @@ function renderMembers(list) {
 
         <div class="card-actions-bottom">
           ${isPaid ? `
-            <button class="btn-paid-status" title="Paid">
-              <i class="ti ti-circle-check"></i> Paid
+            <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="WhatsApp Message">
+              <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
             </button>
           ` : `
             <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="WhatsApp Reminder">
               <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               WhatsApp Reminder
             </button>
-          `}
-          ${!isPaid ? `
             <button class="btn-quick-pay" onclick="triggerQuickPay('${m.index}')" title="Quick Mark Paid via Cash">
               <i class="ti ti-checkbox"></i> Mark Paid
             </button>
-          ` : ""}
+          `}
+          <button class="btn-advance-pay" onclick="triggerAdvancePay('${m.index}')" title="Record Advance Payment">
+            <i class="ti ti-calendar-dollar"></i> Advance
+          </button>
         </div>
       </div>
     `;
@@ -660,6 +693,127 @@ function formatDateDisplay(dateStr) {
   const d = new Date(`${dateStr}T00:00:00`);
   if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const GUJARATI_MONTHS = [
+  "જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ", "એપ્રિલ", "મે", "જૂન",
+  "જુલાઈ", "ઓગસ્ટ", "સપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"
+];
+
+function formatMonthYear(dateStr) {
+  if (!dateStr) return "";
+  const normalized = dateStr.length === 7 ? `${dateStr}-01` : dateStr;
+  const d = new Date(`${normalized}T00:00:00`);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+}
+
+function formatMonthYearGujarati(dateStr) {
+  if (!dateStr) return "";
+  const normalized = dateStr.length === 7 ? `${dateStr}-01` : dateStr;
+  const d = new Date(`${normalized}T00:00:00`);
+  if (isNaN(d.getTime())) return dateStr;
+  return `${GUJARATI_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getLastDayOfMonth(yearMonth) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+}
+
+function countMonthsInRange(startDateStr, endMonthStr) {
+  const start = new Date(`${startDateStr}T00:00:00`);
+  const [endYear, endMonth] = endMonthStr.split("-").map(Number);
+  const startYear = start.getFullYear();
+  const startMonth = start.getMonth() + 1;
+  return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+}
+
+function buildAdvanceMonthsDesc(coverageStart, coverageEnd) {
+  return `${formatMonthYearGujarati(coverageStart)} થી ${formatMonthYearGujarati(coverageEnd)} સુધી એડવાન્સ`;
+}
+
+function isAdvanceActive(member) {
+  if (!member.coverageEnd) return false;
+  const end = new Date(`${member.coverageEnd}T23:59:59`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return end >= today;
+}
+
+function isAdvanceExpiringSoon(member) {
+  if (!isAdvanceActive(member)) return false;
+  const end = new Date(`${member.coverageEnd}T23:59:59`);
+  const today = new Date();
+  const daysLeft = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+  return daysLeft <= 30;
+}
+
+function buildAdvanceThankYouMessage(member, { coverageStart, coverageEnd, amountPaid, monthsCovered, method }) {
+  const fromLabel = formatMonthYear(coverageStart);
+  const toLabel = formatMonthYear(coverageEnd);
+  const monthsLabel = monthsCovered === 1 ? "1 month" : `${monthsCovered} months`;
+
+  return `Assalamu Alaikum,
+
+*Ihsanpark Society Maintenance — Advance Payment Received* ✅
+Bungalow: *${member.bungalow}*
+Owner: *${member.ownerName}*
+
+JazakAllah! Thank you for your advance maintenance payment.
+
+You have paid advance maintenance from *${fromLabel}* to *${toLabel}*.
+Period: *${monthsLabel}* | Amount: *₹${amountPaid.toLocaleString("en-IN")}*
+Method: *${method}*
+
+Your maintenance is fully covered until *${toLabel}*. ✅
+
+JazakAllah for your support!`;
+}
+
+function promptAdvanceThankYou(member, advanceInfo) {
+  const message = buildAdvanceThankYouMessage(member, advanceInfo);
+  const hasPhone = !!formatWhatsAppPhone(member.phone);
+
+  state.pendingWhatsApp = { member, message };
+
+  if (elements.waPromptText) {
+    elements.waPromptText.textContent = hasPhone
+      ? `Advance payment saved for Bungalow ${member.bungalow}. Tap Open WhatsApp to notify ${member.ownerName}.`
+      : "Advance payment saved. No phone on record — WhatsApp will open so you can pick a contact.";
+  }
+
+  openWhatsAppModal();
+}
+
+function updateAdvanceCalcDisplay() {
+  if (!elements.advMonthsDisplay || !elements.advAmountDisplay) return;
+
+  const fromDate = elements.advFromDate.value;
+  const untilMonth = elements.advUntilMonth.value;
+  const index = state.advancePayIndex;
+  const member = index
+    ? state.members.find(m => m.index.toString() === index.toString())
+    : null;
+  const rate = member ? member.rate : 0;
+
+  if (!fromDate || !untilMonth) {
+    elements.advMonthsDisplay.textContent = "—";
+    elements.advAmountDisplay.textContent = "₹0";
+    return;
+  }
+
+  const months = countMonthsInRange(fromDate, untilMonth);
+  if (months <= 0) {
+    elements.advMonthsDisplay.textContent = "Invalid range";
+    elements.advAmountDisplay.textContent = "₹0";
+    return;
+  }
+
+  const amount = rate * months;
+  elements.advMonthsDisplay.textContent = months === 1 ? "1 month" : `${months} months`;
+  elements.advAmountDisplay.textContent = `₹${amount.toLocaleString("en-IN")}`;
 }
 
 function buildWhatsAppUrl(member, message) {
@@ -770,9 +924,23 @@ window.sendWhatsAppReminder = function(index) {
   if (!member) return;
 
   const isPaid = member.status === "PAID" || member.remainingMonths === 0;
-  const message = isPaid
-    ? buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method })
-    : `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
+  let message;
+
+  if (isAdvanceActive(member) && member.coverageStart) {
+    const endMonth = member.coverageEnd.slice(0, 7);
+    const monthsCovered = countMonthsInRange(member.coverageStart, endMonth);
+    message = buildAdvanceThankYouMessage(member, {
+      coverageStart: member.coverageStart,
+      coverageEnd: member.coverageEnd,
+      amountPaid: member.bankMoney || member.rate * monthsCovered,
+      monthsCovered,
+      method: member.method
+    });
+  } else if (isPaid) {
+    message = buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method });
+  } else {
+    message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
+  }
 
   openWhatsApp(member, message);
 };
@@ -892,6 +1060,145 @@ function closeQuickPayModal() {
   unlockMobilePage();
   elements.qpForm.reset();
   state.quickPayIndex = null;
+}
+
+// Advance Payment - Opens modal to record date-range advance
+window.triggerAdvancePay = function(index) {
+  const member = state.members.find(m => m.index.toString() === index.toString());
+  if (!member) return;
+
+  state.advancePayIndex = index;
+
+  elements.advBungalowDisplay.textContent = member.bungalow;
+  elements.advRateDisplay.textContent = `₹${member.rate}`;
+  elements.advFromDate.value = getTodayDateString();
+  elements.advUntilMonth.value = "";
+  elements.advMethod.value = "Cash";
+
+  updateAdvanceCalcDisplay();
+
+  elements.advOverlay.classList.add("open");
+  elements.advOverlay.setAttribute("aria-hidden", "false");
+  lockMobilePage();
+  elements.advFromDate.focus();
+};
+
+function closeAdvanceModal() {
+  elements.advOverlay.classList.remove("open");
+  elements.advOverlay.setAttribute("aria-hidden", "true");
+  unlockMobilePage();
+  elements.advForm.reset();
+  state.advancePayIndex = null;
+}
+
+async function handleAdvanceSubmit(e) {
+  e.preventDefault();
+
+  if (!state.advancePayIndex) return;
+  const index = state.advancePayIndex;
+  const member = state.members.find(m => m.index.toString() === index.toString());
+  if (!member) return;
+
+  const fromDate = elements.advFromDate.value;
+  const untilMonth = elements.advUntilMonth.value;
+  const methodVal = elements.advMethod.value;
+
+  if (!fromDate || !untilMonth) {
+    showToast("❌ Please select both start date and end month.");
+    return;
+  }
+
+  const monthsCovered = countMonthsInRange(fromDate, untilMonth);
+  if (monthsCovered <= 0) {
+    showToast("❌ End month must be on or after the start date.");
+    return;
+  }
+
+  const coverageEnd = getLastDayOfMonth(untilMonth);
+  const amountPaid = member.rate * monthsCovered;
+  const bankMoneyVal = methodVal === "Cash" ? 0 : amountPaid;
+  const monthsDesc = buildAdvanceMonthsDesc(fromDate, coverageEnd);
+  const paymentDate = getTodayDateString();
+
+  const submitUrl = window.APP_CONFIG.submitUrl;
+
+  const updatedFields = {
+    status: "PAID",
+    method: methodVal,
+    bankMoney: bankMoneyVal,
+    remainingMonths: 0,
+    totalRemaining: 0,
+    monthsDesc: monthsDesc,
+    paymentDate: paymentDate,
+    coverageStart: fromDate,
+    coverageEnd: coverageEnd
+  };
+
+  if (state.connectionStatus === "offline" || !submitUrl) {
+    const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
+    if (localIdx !== -1) {
+      const updatedMember = { ...state.members[localIdx], ...updatedFields };
+      state.members[localIdx] = updatedMember;
+      applyFilters();
+      showToast("🎉 Advance payment saved locally!");
+      closeAdvanceModal();
+      promptAdvanceThankYou(updatedMember, {
+        coverageStart: fromDate,
+        coverageEnd: coverageEnd,
+        amountPaid,
+        monthsCovered,
+        method: methodVal
+      });
+    }
+    return;
+  }
+
+  elements.advSubmitBtn.disabled = true;
+  elements.advSubmitBtn.classList.add("loading");
+
+  const payload = {
+    action: "edit",
+    index: index,
+    ...updatedFields
+  };
+
+  try {
+    const response = await fetch(submitUrl, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error("Server response failed");
+
+    const result = await response.json();
+    if (result.status === "success") {
+      const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
+      if (localIdx !== -1) {
+        const updatedMember = { ...state.members[localIdx], ...updatedFields };
+        state.members[localIdx] = updatedMember;
+        showToast("🎉 Advance payment saved!");
+        applyFilters();
+        closeAdvanceModal();
+        promptAdvanceThankYou(updatedMember, {
+          coverageStart: fromDate,
+          coverageEnd: coverageEnd,
+          amountPaid,
+          monthsCovered,
+          method: methodVal
+        });
+      }
+    } else {
+      throw new Error(result.message || "Write rejected by Apps Script");
+    }
+  } catch (error) {
+    console.error("Advance Payment Failed:", error);
+    showToast("❌ Sync failure. Failed to save advance payment.");
+  } finally {
+    elements.advSubmitBtn.disabled = false;
+    elements.advSubmitBtn.classList.remove("loading");
+  }
 }
 
 // Handles the actual Quick Pay submission
@@ -1349,6 +1656,9 @@ function setupEventListeners() {
       if (elements.qpOverlay.classList.contains("open")) {
         closeQuickPayModal();
       }
+      if (elements.advOverlay && elements.advOverlay.classList.contains("open")) {
+        closeAdvanceModal();
+      }
       if (elements.waOverlay && elements.waOverlay.classList.contains("open")) {
         closeWhatsAppModal();
       }
@@ -1366,6 +1676,30 @@ function setupEventListeners() {
   });
   // Quick Pay submit form
   elements.qpForm.addEventListener("submit", handleQuickPaySubmit);
+
+  // Advance Payment Modal listeners
+  if (elements.advCancelBtn) {
+    elements.advCancelBtn.addEventListener("click", closeAdvanceModal);
+  }
+  if (elements.advCloseBtn) {
+    elements.advCloseBtn.addEventListener("click", closeAdvanceModal);
+  }
+  if (elements.advOverlay) {
+    elements.advOverlay.addEventListener("click", (e) => {
+      if (e.target === elements.advOverlay) {
+        closeAdvanceModal();
+      }
+    });
+  }
+  if (elements.advForm) {
+    elements.advForm.addEventListener("submit", handleAdvanceSubmit);
+  }
+  if (elements.advFromDate) {
+    elements.advFromDate.addEventListener("change", updateAdvanceCalcDisplay);
+  }
+  if (elements.advUntilMonth) {
+    elements.advUntilMonth.addEventListener("change", updateAdvanceCalcDisplay);
+  }
 
   // Bottom Navigation Switching
   elements.navBtnList.addEventListener("click", () => {

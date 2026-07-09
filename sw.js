@@ -1,8 +1,8 @@
-const CACHE_NAME = 'ihsanpark-v3';
+const CACHE_NAME = 'ihsanpark-v5';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=1.0.3',
+  './style.css?v=1.0.5',
   './app.js',
   './config.js',
   './logo.png',
