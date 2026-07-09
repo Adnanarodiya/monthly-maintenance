@@ -686,6 +686,14 @@ textarea {
   padding-top: 0.5rem;
 }
 
+.advance-calc-total {
+  font-weight: 600;
+}
+
+.advance-calc-total span {
+  color: var(--text-primary);
+}
+
 .advance-amount {
   color: #047857;
   font-size: 1rem;

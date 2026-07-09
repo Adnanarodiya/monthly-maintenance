@@ -92,8 +92,10 @@ const elements = {
   advFromDate: document.getElementById("adv-from-date"),
   advUntilMonth: document.getElementById("adv-until-month"),
   advMethod: document.getElementById("adv-method"),
-  advMonthsDisplay: document.getElementById("adv-months-display"),
-  advAmountDisplay: document.getElementById("adv-amount-display"),
+  advPendingRow: document.getElementById("adv-pending-row"),
+  advPendingDisplay: document.getElementById("adv-pending-display"),
+  advAdvanceDisplay: document.getElementById("adv-advance-display"),
+  advTotalDisplay: document.getElementById("adv-total-display"),
   advCancelBtn: document.getElementById("cancel-advance-btn"),
   advCloseBtn: document.getElementById("close-advance-btn"),
   advForm: document.getElementById("advance-form"),
@@ -758,8 +760,42 @@ function countMonthsInRange(startDateStr, endMonthStr) {
   return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
 }
 
-function buildAdvanceMonthsDesc(coverageStart, coverageEnd) {
-  return `${formatMonthYearGujarati(coverageStart)} થી ${formatMonthYearGujarati(coverageEnd)} સુધી એડવાન્સ`;
+function buildAdvanceMonthsDesc(coverageStart, coverageEnd, pendingMonths = 0) {
+  const advancePart = `${formatMonthYearGujarati(coverageStart)} થી ${formatMonthYearGujarati(coverageEnd)} સુધી એડવાન્સ`;
+  if (pendingMonths > 0) {
+    const pendingLabel = pendingMonths === 1 ? "1 મહિનો બાકી" : `${pendingMonths} મહિના બાકી`;
+    return `${pendingLabel} + ${advancePart}`;
+  }
+  return advancePart;
+}
+
+function formatMonthsAmount(months, amount) {
+  const monthsLabel = months === 1 ? "1 month" : `${months} months`;
+  return `${monthsLabel} (₹${amount.toLocaleString("en-IN")})`;
+}
+
+function calculateAdvanceBreakdown(member, fromDate, untilMonth) {
+  const rate = Number(member.rate) || 0;
+  const pendingMonths = Math.max(0, Number(member.remainingMonths) || 0);
+  const pendingAmount = pendingMonths * rate;
+
+  let advanceMonths = 0;
+  let advanceAmount = 0;
+  if (fromDate && untilMonth) {
+    advanceMonths = countMonthsInRange(fromDate, untilMonth);
+    if (advanceMonths > 0) {
+      advanceAmount = advanceMonths * rate;
+    }
+  }
+
+  return {
+    pendingMonths,
+    pendingAmount,
+    advanceMonths: Math.max(0, advanceMonths),
+    advanceAmount,
+    totalMonths: pendingMonths + Math.max(0, advanceMonths),
+    totalAmount: pendingAmount + advanceAmount
+  };
 }
 
 function isAdvanceActive(member) {
@@ -782,27 +818,44 @@ function getWhatsAppDateLine() {
   return `Date: *${formatDateDisplay(getTodayDateString())}*`;
 }
 
-function buildAdvanceThankYouMessage(member, { coverageStart, coverageEnd, amountPaid, monthsCovered, method }) {
+function buildAdvanceThankYouMessage(member, {
+  coverageStart,
+  coverageEnd,
+  amountPaid,
+  monthsCovered,
+  method,
+  pendingMonths = 0,
+  pendingAmount = 0
+}) {
   const fromLabel = formatMonthYear(coverageStart);
   const toLabel = formatMonthYear(coverageEnd);
-  const monthsLabel = monthsCovered === 1 ? "1 month" : `${monthsCovered} months`;
+  const advanceMonthsLabel = monthsCovered === 1 ? "1 month" : `${monthsCovered} months`;
+  const advanceAmount = monthsCovered * member.rate;
 
-  return `Assalamu Alaikum,
+  let message = `Assalamu Alaikum,
 
-*Ihsanpark Society Maintenance — Advance Payment Received* ✅
+*Ihsanpark Society Maintenance — Payment Received* ✅
 ${getWhatsAppDateLine()}
 Bungalow: *${member.bungalow}*
 Owner: *${member.ownerName}*
 
-JazakAllah! Thank you for your advance maintenance payment.
+JazakAllah! Thank you for your maintenance payment.
 
-You have paid advance maintenance from *${fromLabel}* to *${toLabel}*.
-Period: *${monthsLabel}* | Amount: *₹${amountPaid.toLocaleString("en-IN")}*
-Method: *${method}*
+*Payment breakdown:*`;
 
-Your maintenance is fully covered until *${toLabel}*. ✅
+  if (pendingMonths > 0) {
+    const pendingLabel = pendingMonths === 1 ? "1 month" : `${pendingMonths} months`;
+    message += `\n• Pending cleared: *${pendingLabel}* (*₹${pendingAmount.toLocaleString("en-IN")}*)`;
+  }
 
-JazakAllah for your support!`;
+  message += `\n• Advance: *${fromLabel}* to *${toLabel}* (*${advanceMonthsLabel}* | *₹${advanceAmount.toLocaleString("en-IN")}*)`;
+  message += `\n• *Total paid: ₹${amountPaid.toLocaleString("en-IN")}*`;
+  message += `\nMethod: *${method}*`;
+
+  message += `\n\nYour maintenance is fully covered until *${toLabel}*. ✅`;
+  message += `\n\nJazakAllah for your support!`;
+
+  return message;
 }
 
 function promptAdvanceThankYou(member, advanceInfo) {
@@ -821,7 +874,7 @@ function promptAdvanceThankYou(member, advanceInfo) {
 }
 
 function updateAdvanceCalcDisplay() {
-  if (!elements.advMonthsDisplay || !elements.advAmountDisplay) return;
+  if (!elements.advAdvanceDisplay || !elements.advTotalDisplay) return;
 
   const fromDate = elements.advFromDate.value;
   const untilMonth = elements.advUntilMonth.value;
@@ -829,24 +882,40 @@ function updateAdvanceCalcDisplay() {
   const member = index
     ? state.members.find(m => m.index.toString() === index.toString())
     : null;
-  const rate = member ? member.rate : 0;
 
-  if (!fromDate || !untilMonth) {
-    elements.advMonthsDisplay.textContent = "—";
-    elements.advAmountDisplay.textContent = "₹0";
+  if (!member) return;
+
+  const breakdown = calculateAdvanceBreakdown(member, fromDate, untilMonth);
+
+  if (elements.advPendingRow) {
+    if (breakdown.pendingMonths > 0) {
+      elements.advPendingRow.hidden = false;
+      elements.advPendingDisplay.textContent = formatMonthsAmount(
+        breakdown.pendingMonths,
+        breakdown.pendingAmount
+      );
+    } else {
+      elements.advPendingRow.hidden = true;
+      elements.advPendingDisplay.textContent = "—";
+    }
+  }
+
+  if (!fromDate || !untilMonth || breakdown.advanceMonths <= 0) {
+    elements.advAdvanceDisplay.textContent = "—";
+    elements.advTotalDisplay.textContent = breakdown.pendingMonths > 0
+      ? formatMonthsAmount(breakdown.pendingMonths, breakdown.pendingAmount)
+      : "—";
     return;
   }
 
-  const months = countMonthsInRange(fromDate, untilMonth);
-  if (months <= 0) {
-    elements.advMonthsDisplay.textContent = "Invalid range";
-    elements.advAmountDisplay.textContent = "₹0";
-    return;
-  }
-
-  const amount = rate * months;
-  elements.advMonthsDisplay.textContent = months === 1 ? "1 month" : `${months} months`;
-  elements.advAmountDisplay.textContent = `₹${amount.toLocaleString("en-IN")}`;
+  elements.advAdvanceDisplay.textContent = formatMonthsAmount(
+    breakdown.advanceMonths,
+    breakdown.advanceAmount
+  );
+  elements.advTotalDisplay.textContent = formatMonthsAmount(
+    breakdown.totalMonths,
+    breakdown.totalAmount
+  );
 }
 
 function buildWhatsAppUrl(member, message) {
@@ -1147,10 +1216,11 @@ async function handleAdvanceSubmit(e) {
     return;
   }
 
+  const breakdown = calculateAdvanceBreakdown(member, fromDate, untilMonth);
   const coverageEnd = getLastDayOfMonth(untilMonth);
-  const amountPaid = member.rate * monthsCovered;
+  const amountPaid = breakdown.totalAmount;
   const bankMoneyVal = methodVal === "Cash" ? 0 : amountPaid;
-  const monthsDesc = buildAdvanceMonthsDesc(fromDate, coverageEnd);
+  const monthsDesc = buildAdvanceMonthsDesc(fromDate, coverageEnd, breakdown.pendingMonths);
   const paymentDate = getTodayDateString();
 
   const submitUrl = window.APP_CONFIG.submitUrl;
@@ -1167,6 +1237,16 @@ async function handleAdvanceSubmit(e) {
     coverageEnd: coverageEnd
   };
 
+  const advanceInfo = {
+    coverageStart: fromDate,
+    coverageEnd: coverageEnd,
+    amountPaid,
+    monthsCovered,
+    method: methodVal,
+    pendingMonths: breakdown.pendingMonths,
+    pendingAmount: breakdown.pendingAmount
+  };
+
   if (state.connectionStatus === "offline" || !submitUrl) {
     const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
     if (localIdx !== -1) {
@@ -1175,13 +1255,7 @@ async function handleAdvanceSubmit(e) {
       applyFilters();
       showToast("🎉 Advance payment saved locally!");
       closeAdvanceModal();
-      promptAdvanceThankYou(updatedMember, {
-        coverageStart: fromDate,
-        coverageEnd: coverageEnd,
-        amountPaid,
-        monthsCovered,
-        method: methodVal
-      });
+      promptAdvanceThankYou(updatedMember, advanceInfo);
     }
     return;
   }
@@ -1214,13 +1288,7 @@ async function handleAdvanceSubmit(e) {
         showToast("🎉 Advance payment saved!");
         applyFilters();
         closeAdvanceModal();
-        promptAdvanceThankYou(updatedMember, {
-          coverageStart: fromDate,
-          coverageEnd: coverageEnd,
-          amountPaid,
-          monthsCovered,
-          method: methodVal
-        });
+        promptAdvanceThankYou(updatedMember, advanceInfo);
       }
     } else {
       throw new Error(result.message || "Write rejected by Apps Script");

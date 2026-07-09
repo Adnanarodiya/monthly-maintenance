@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
   <!-- Style Link -->
-  <link rel="stylesheet" href="style.css?v=1.0.6">
+  <link rel="stylesheet" href="style.css?v=1.0.7">
 
   <!-- PWA & Mobile Icons -->
   <link rel="manifest" href="manifest.json">
@@ -362,13 +362,17 @@
         </div>
 
         <div class="advance-calc-display" id="advance-calc-display">
-          <div class="advance-calc-row">
-            <span>Months covered</span>
-            <strong id="adv-months-display">—</strong>
+          <div class="advance-calc-row" id="adv-pending-row" hidden>
+            <span>Pending dues</span>
+            <strong id="adv-pending-display">—</strong>
           </div>
           <div class="advance-calc-row">
-            <span>Advance amount</span>
-            <strong id="adv-amount-display" class="advance-amount">₹0</strong>
+            <span>Advance</span>
+            <strong id="adv-advance-display">—</strong>
+          </div>
+          <div class="advance-calc-row advance-calc-total">
+            <span>Total</span>
+            <strong id="adv-total-display" class="advance-amount">—</strong>
           </div>
         </div>
 
