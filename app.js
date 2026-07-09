@@ -123,6 +123,11 @@ function unlockMobilePage() {
   }
 }
 
+function resetMobilePageLock() {
+  openOverlayCount = 0;
+  document.body.classList.remove("mobile-locked");
+}
+
 function initMobileViewportLock() {
   // Block pinch-to-zoom in installed PWA (iOS Safari + Android Chrome)
   document.addEventListener("gesturestart", (e) => e.preventDefault());
@@ -178,7 +183,7 @@ function initSecurityGate() {
   if (isUnlocked) {
     if (lockScreen) lockScreen.style.display = "none";
     if (appShell) appShell.style.display = "flex";
-    unlockMobilePage();
+    resetMobilePageLock();
     fetchData();
     setupEventListeners();
   } else {
@@ -283,7 +288,8 @@ function setupSecurityEventListeners() {
         setTimeout(() => {
           lockScreen.style.display = "none";
           appShell.style.display = "flex";
-          
+          resetMobilePageLock();
+
           // Load data and normal listeners
           fetchData();
           setupEventListeners();
@@ -695,132 +701,6 @@ function formatDateDisplay(dateStr) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-
-const GUJARATI_MONTHS = [
-  "જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ", "એપ્રિલ", "મે", "જૂન",
-  "જુલાઈ", "ઓગસ્ટ", "સપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"
-];
-
-function formatMonthYear(dateStr) {
-  if (!dateStr) return "";
-  const normalized = dateStr.length === 7 ? `${dateStr}-01` : dateStr;
-  const d = new Date(`${normalized}T00:00:00`);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-}
-
-function formatMonthYearGujarati(dateStr) {
-  if (!dateStr) return "";
-  const normalized = dateStr.length === 7 ? `${dateStr}-01` : dateStr;
-  const d = new Date(`${normalized}T00:00:00`);
-  if (isNaN(d.getTime())) return dateStr;
-  return `${GUJARATI_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-function getLastDayOfMonth(yearMonth) {
-  const [year, month] = yearMonth.split("-").map(Number);
-  const lastDay = new Date(year, month, 0).getDate();
-  return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-}
-
-function countMonthsInRange(startDateStr, endMonthStr) {
-  const start = new Date(`${startDateStr}T00:00:00`);
-  const [endYear, endMonth] = endMonthStr.split("-").map(Number);
-  const startYear = start.getFullYear();
-  const startMonth = start.getMonth() + 1;
-  return (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
-}
-
-function buildAdvanceMonthsDesc(coverageStart, coverageEnd) {
-  return `${formatMonthYearGujarati(coverageStart)} થી ${formatMonthYearGujarati(coverageEnd)} સુધી એડવાન્સ`;
-}
-
-function isAdvanceActive(member) {
-  if (!member.coverageEnd) return false;
-  const end = new Date(`${member.coverageEnd}T23:59:59`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return end >= today;
-}
-
-function isAdvanceExpiringSoon(member) {
-  if (!isAdvanceActive(member)) return false;
-  const end = new Date(`${member.coverageEnd}T23:59:59`);
-  const today = new Date();
-  const daysLeft = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
-  return daysLeft <= 30;
-}
-
-function buildAdvanceThankYouMessage(member, { coverageStart, coverageEnd, amountPaid, monthsCovered, method }) {
-  const fromLabel = formatMonthYear(coverageStart);
-  const toLabel = formatMonthYear(coverageEnd);
-  const monthsLabel = monthsCovered === 1 ? "1 month" : `${monthsCovered} months`;
-
-  return `Assalamu Alaikum,
-
-*Ihsanpark Society Maintenance — Advance Payment Received* ✅
-Bungalow: *${member.bungalow}*
-Owner: *${member.ownerName}*
-
-JazakAllah! Thank you for your advance maintenance payment.
-
-You have paid advance maintenance from *${fromLabel}* to *${toLabel}*.
-Period: *${monthsLabel}* | Amount: *₹${amountPaid.toLocaleString("en-IN")}*
-Method: *${method}*
-
-Your maintenance is fully covered until *${toLabel}*. ✅
-
-JazakAllah for your support!`;
-}
-
-function promptAdvanceThankYou(member, advanceInfo) {
-  const message = buildAdvanceThankYouMessage(member, advanceInfo);
-  const hasPhone = !!formatWhatsAppPhone(member.phone);
-
-  state.pendingWhatsApp = { member, message };
-
-  if (elements.waPromptText) {
-    elements.waPromptText.textContent = hasPhone
-      ? `Advance payment saved for Bungalow ${member.bungalow}. Tap Open WhatsApp to notify ${member.ownerName}.`
-      : "Advance payment saved. No phone on record — WhatsApp will open so you can pick a contact.";
-  }
-
-  openWhatsAppModal();
-}
-
-function updateAdvanceCalcDisplay() {
-  if (!elements.advMonthsDisplay || !elements.advAmountDisplay) return;
-
-  const fromDate = elements.advFromDate.value;
-  const untilMonth = elements.advUntilMonth.value;
-  const index = state.advancePayIndex;
-  const member = index
-    ? state.members.find(m => m.index.toString() === index.toString())
-    : null;
-  const rate = member ? member.rate : 0;
-
-  if (!fromDate || !untilMonth) {
-    elements.advMonthsDisplay.textContent = "—";
-    elements.advAmountDisplay.textContent = "₹0";
-    return;
-  }
-
-  const months = countMonthsInRange(fromDate, untilMonth);
-  if (months <= 0) {
-    elements.advMonthsDisplay.textContent = "Invalid range";
-    elements.advAmountDisplay.textContent = "₹0";
-    return;
-  }
-
-  const amount = rate * months;
-  elements.advMonthsDisplay.textContent = months === 1 ? "1 month" : `${months} months`;
-  elements.advAmountDisplay.textContent = `₹${amount.toLocaleString("en-IN")}`;
-}
-
-function getWhatsAppDateLine() {
-  return `Date: *${formatDateDisplay(getTodayDateString())}*`;
-}
-
 function buildWhatsAppUrl(member, message) {
   const encodedText = encodeURIComponent(message);
   const waPhone = formatWhatsAppPhone(member.phone);
@@ -929,23 +809,9 @@ window.sendWhatsAppReminder = function(index) {
   if (!member) return;
 
   const isPaid = member.status === "PAID" || member.remainingMonths === 0;
-  let message;
-
-  if (isAdvanceActive(member) && member.coverageStart) {
-    const endMonth = member.coverageEnd.slice(0, 7);
-    const monthsCovered = countMonthsInRange(member.coverageStart, endMonth);
-    message = buildAdvanceThankYouMessage(member, {
-      coverageStart: member.coverageStart,
-      coverageEnd: member.coverageEnd,
-      amountPaid: member.bankMoney || member.rate * monthsCovered,
-      monthsCovered,
-      method: member.method
-    });
-  } else if (isPaid) {
-    message = buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method });
-  } else {
-    message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine()}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || "Pending maintenance payment."}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
-  }
+  const message = isPaid
+    ? buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method })
+    : `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || 'Pending maintenance payment.'}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
 
   openWhatsApp(member, message);
 };

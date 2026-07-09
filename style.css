@@ -84,7 +84,6 @@ body {
 
 body.mobile-locked .app-content {
   overflow: hidden !important;
-  touch-action: none;
 }
 
 /* Mobile PWA: 16px+ inputs prevent auto-zoom on focus (iOS + Android) */
@@ -197,12 +196,14 @@ textarea {
 /* App Content Area */
 .app-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 1rem;
   padding-bottom: 80px; /* spacing to prevent overlapping bottom nav */
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Panels */
