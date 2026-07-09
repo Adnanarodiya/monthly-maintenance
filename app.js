@@ -8,22 +8,10 @@ window.APP_CONFIG = window.APP_CONFIG || {
   fallbackData: []
 };
 
-function isConfiguredSheetUrl(url) {
-  if (!url || typeof url !== "string") return false;
-  const trimmed = url.trim();
-  if (!trimmed || trimmed.includes("YOUR_GOOGLE_APPS_SCRIPT")) return false;
-  return (
-    trimmed.includes("script.google.com") ||
-    trimmed.includes("docs.google.com/spreadsheets") ||
-    trimmed.includes("/exec")
-  );
-}
-
 function getSheetReadUrl() {
-  const sheetUrl = window.APP_CONFIG.sheetUrl;
-  const submitUrl = window.APP_CONFIG.submitUrl;
-  const readUrl = (sheetUrl || submitUrl || "").trim();
-  return isConfiguredSheetUrl(readUrl) ? readUrl : null;
+  const readUrl = (window.APP_CONFIG.sheetUrl || window.APP_CONFIG.submitUrl || "").trim();
+  if (!readUrl || readUrl.includes("YOUR_GOOGLE_APPS_SCRIPT")) return null;
+  return readUrl;
 }
 
 // State Management
@@ -356,11 +344,7 @@ async function fetchData() {
 
   try {
     const fetchUrl = `${readUrl}${readUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`;
-    const response = await fetch(fetchUrl, {
-      method: "GET",
-      mode: "cors",
-      cache: "no-store"
-    });
+    const response = await fetch(fetchUrl);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
