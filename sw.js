@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ihsanpark-v7';
+const CACHE_NAME = 'ihsanpark-v8';
 const ASSETS = [
   './',
   './index.html',
