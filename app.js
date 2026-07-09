@@ -2,6 +2,30 @@
  * Core Application Logic for Ihsanpark Society Maintenance Dashboard
  */
 
+window.APP_CONFIG = window.APP_CONFIG || {
+  sheetUrl: "",
+  submitUrl: "",
+  fallbackData: []
+};
+
+function isConfiguredSheetUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.includes("YOUR_GOOGLE_APPS_SCRIPT")) return false;
+  return (
+    trimmed.includes("script.google.com") ||
+    trimmed.includes("docs.google.com/spreadsheets") ||
+    trimmed.includes("/exec")
+  );
+}
+
+function getSheetReadUrl() {
+  const sheetUrl = window.APP_CONFIG.sheetUrl;
+  const submitUrl = window.APP_CONFIG.submitUrl;
+  const readUrl = (sheetUrl || submitUrl || "").trim();
+  return isConfiguredSheetUrl(readUrl) ? readUrl : null;
+}
+
 // State Management
 let state = {
   members: [],
@@ -322,24 +346,24 @@ function setupSecurityEventListeners() {
 async function fetchData() {
   showLoading();
 
-  const url = window.APP_CONFIG.sheetUrl;
-  const submitUrl = window.APP_CONFIG.submitUrl;
-
-  // Use submitUrl for fetching if sheetUrl is not configured but submitUrl is (since it acts as GET too)
-  const readUrl = url || submitUrl;
+  const readUrl = getSheetReadUrl();
 
   if (!readUrl) {
-    console.warn("No Google Sheet read URL configured. Using offline fallback.");
-    loadFallbackData();
+    console.warn("Google Sheet URL is missing or not configured in config.js.");
+    loadFallbackData("config");
     return;
   }
 
   try {
     const fetchUrl = `${readUrl}${readUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`;
-    const response = await fetch(fetchUrl);
+    const response = await fetch(fetchUrl, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store"
+    });
     
     if (!response.ok) {
-      throw new Error(`HTTP Error: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const contentType = response.headers.get("content-type") || "";
@@ -349,8 +373,8 @@ async function fetchData() {
       // Direct Apps Script JSON GET
       parsedData = await response.json();
       // If error payload returned from Apps Script
-      if (parsedData.status === "error") {
-        throw new Error(parsedData.message);
+      if (parsedData && parsedData.status === "error") {
+        throw new Error(parsedData.message || "Apps Script returned an error");
       }
     } else {
       // Standard published CSV export URL
@@ -359,30 +383,44 @@ async function fetchData() {
     }
 
     if (!Array.isArray(parsedData) || parsedData.length === 0) {
-      throw new Error("No society records returned.");
+      throw new Error("No society records returned from Google Sheet.");
     }
 
     state.members = parsedData;
     state.connectionStatus = "online";
     elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-check"></i> Connected`;
     elements.syncStatusLabel.style.color = "#10b981";
+    elements.syncStatusLabel.title = "";
     
     applyFilters();
   } catch (error) {
     console.warn("Google Sheet Sync Failed. Using offline cached fallback.", error);
-    loadFallbackData();
+    loadFallbackData("network", error.message);
   }
 }
 
-function loadFallbackData() {
-  state.members = window.APP_CONFIG.fallbackData.map(m => ({
+function loadFallbackData(reason = "network", errorMessage = "") {
+  const fallback = Array.isArray(window.APP_CONFIG.fallbackData)
+    ? window.APP_CONFIG.fallbackData
+    : [];
+
+  state.members = fallback.map(m => ({
     ...m,
     status: m.remainingMonths === 0 ? "PAID" : "Remaining"
   }));
   state.connectionStatus = "offline";
-  elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Offline Mode`;
+
+  if (reason === "config") {
+    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Not Configured`;
+    elements.syncStatusLabel.title = "Add your Google Apps Script URL in config.js";
+    showToast("⚠️ config.js missing or URL not set. Copy config.example.js → config.js and paste your Apps Script URL.");
+  } else {
+    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Offline — Tap to Retry`;
+    elements.syncStatusLabel.title = errorMessage || "Could not reach Google Sheet";
+    showToast("⚠️ Could not sync with Google Sheet. Showing offline data. Tap sync status to retry.");
+  }
+
   elements.syncStatusLabel.style.color = "#ef4444";
-  showToast("⚠️ Operating in local offline mode");
   applyFilters();
 }
 
@@ -1454,6 +1492,13 @@ async function handleFormSubmit(e) {
 
 // Event Listeners setup
 function setupEventListeners() {
+  // Tap sync status to retry when offline
+  elements.syncStatusLabel.addEventListener("click", () => {
+    if (state.connectionStatus === "offline") {
+      fetchData();
+    }
+  });
+
   // Live search input
   elements.searchInput.addEventListener("input", (e) => {
     state.searchQuery = e.target.value;

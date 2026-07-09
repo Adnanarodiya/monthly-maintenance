@@ -309,6 +309,7 @@ textarea {
   align-items: center;
   gap: 3px;
   color: #10b981;
+  cursor: pointer;
 }
 
 /* Listings Results */

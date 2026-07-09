@@ -1,10 +1,9 @@
-const CACHE_NAME = 'ihsanpark-v6';
+const CACHE_NAME = 'ihsanpark-v7';
 const ASSETS = [
   './',
   './index.html',
   './style.css?v=1.0.6',
   './app.js',
-  './config.js',
   './logo.png',
   './manifest.json',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css'
@@ -38,8 +37,15 @@ self.addEventListener('activate', (e) => {
 
 // Fetch Event (Network First, Cache Fallback)
 self.addEventListener('fetch', (e) => {
-  // Always fetch Google Apps Script sync URLs directly from network
-  if (e.request.url.includes('script.google.com') || e.request.url.includes('/exec') || e.request.url.includes('google.com')) {
+  const requestUrl = e.request.url;
+
+  // Always fetch Google sync URLs and config.js from network
+  if (
+    requestUrl.includes('script.google.com') ||
+    requestUrl.includes('/exec') ||
+    requestUrl.includes('google.com') ||
+    requestUrl.includes('config.js')
+  ) {
     return;
   }
 
