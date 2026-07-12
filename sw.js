@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ihsanpark-v9';
+const CACHE_NAME = 'ihsanpark-v10';
 const ASSETS = [
   './',
   './index.html',
-  './style.css?v=1.0.7',
+  './style.css?v=1.0.8',
   './app.js',
+  './i18n.js',
   './logo.png',
   './manifest.json',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css'

@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
   <!-- Style Link -->
-  <link rel="stylesheet" href="style.css?v=1.0.7">
+  <link rel="stylesheet" href="style.css?v=1.0.8">
 
   <!-- PWA & Mobile Icons -->
   <link rel="manifest" href="manifest.json">
@@ -32,8 +32,8 @@
   <div class="lock-screen-overlay" id="lock-screen" aria-hidden="false" role="dialog" aria-labelledby="lock-title">
     <div class="lock-container" id="lock-container">
       <img src="logo.png" alt="Ihsanpark Logo" class="lock-logo" width="70" height="70" />
-      <h2 class="lock-title" id="lock-title">Security PIN</h2>
-      <p class="lock-subtitle">Please enter PIN to access Ihsanpark Maintenance Chart</p>
+      <h2 class="lock-title" id="lock-title" data-i18n="lock.title">Security PIN</h2>
+      <p class="lock-subtitle" data-i18n="lock.subtitle">Please enter PIN to access Ihsanpark Maintenance Chart</p>
       
       <form class="lock-form" id="lock-form" autocomplete="off" novalidate>
         <div class="pin-inputs-row">
@@ -44,7 +44,7 @@
         </div>
         <span class="lock-error-msg" id="lock-error"></span>
         <button type="submit" class="btn-lock-submit" id="lock-submit-btn">
-          <i class="ti ti-key" aria-hidden="true"></i><span>Unlock</span>
+          <i class="ti ti-key" aria-hidden="true"></i><span data-i18n="lock.unlock">Unlock</span>
         </button>
       </form>
     </div>
@@ -60,14 +60,18 @@
           <img src="logo.png" alt="Ihsanpark Logo" class="brand-logo" width="26" height="26" /> Ihsanpark
         </h1>
         <div class="brand-subtitle">
-          <span>Society Maintenance</span>
+          <span data-i18n="brand.subtitle">Society Maintenance</span>
         </div>
       </div>
       
       <!-- Top Action Controls -->
       <div class="header-actions">
-        <button class="btn-add-member" id="open-modal-btn" aria-label="Add Member Record">
-          <i class="ti ti-plus" aria-hidden="true"></i><span>Add</span>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" class="lang-btn active" id="lang-btn-en" data-lang-btn="en" data-i18n="lang.en">EN</button>
+          <button type="button" class="lang-btn" id="lang-btn-gu" data-lang-btn="gu" data-i18n="lang.gu">ગુ</button>
+        </div>
+        <button class="btn-add-member" id="open-modal-btn" data-i18n-aria="btn.addAria" aria-label="Add Member Record">
+          <i class="ti ti-plus" aria-hidden="true"></i><span data-i18n="btn.add">Add</span>
         </button>
       </div>
     </header>
@@ -81,9 +85,11 @@
         <section class="controls-section" aria-label="Search">
           <div class="search-input-wrapper">
             <i class="ti ti-search search-icon" aria-hidden="true"></i>
-            <input type="text" id="search" class="search-input" placeholder="Search bungalow, owner, remarks..."
+            <input type="text" id="search" class="search-input"
+              data-i18n-placeholder="search.placeholder" data-i18n-aria="search.aria"
+              placeholder="Search bungalow, owner, remarks..."
               autocomplete="off" aria-label="Search records" />
-            <button class="search-clear" id="search-clear" aria-label="Clear Search Input">
+            <button class="search-clear" id="search-clear" data-i18n-aria="search.clear" aria-label="Clear Search Input">
               <i class="ti ti-x" aria-hidden="true"></i>
             </button>
           </div>
@@ -91,9 +97,9 @@
 
         <!-- Meta Counts & Sync Label -->
         <div class="meta-info-row" id="meta-row">
-          <span class="shops-count" id="count">0 records listed</span>
+          <span class="shops-count" id="count" data-i18n="count.zero">0 records listed</span>
           <span class="sync-status" id="sync-status-label">
-            <i class="ti ti-cloud-check"></i> Connected
+            <i class="ti ti-cloud-check"></i> <span data-i18n="sync.connected">Connected</span>
           </span>
         </div>
 
@@ -112,7 +118,7 @@
               <i class="ti ti-wallet-off"></i>
             </div>
             <div class="kpi-details">
-              <span class="kpi-label">Total Outstanding</span>
+              <span class="kpi-label" data-i18n="kpi.outstanding">Total Outstanding</span>
               <h2 class="kpi-value" id="stat-outstanding">₹0</h2>
             </div>
           </div>
@@ -123,7 +129,7 @@
               <i class="ti ti-chart-donut"></i>
             </div>
             <div class="kpi-details">
-              <span class="kpi-label">Collection Progress</span>
+              <span class="kpi-label" data-i18n="kpi.progress">Collection Progress</span>
               <h2 class="kpi-value" id="stat-efficiency">0%</h2>
               <div class="progress-bar-container">
                 <div class="progress-bar-fill" id="efficiency-bar" style="width: 0%"></div>
@@ -137,7 +143,7 @@
               <i class="ti ti-users-group"></i>
             </div>
             <div class="kpi-details">
-              <span class="kpi-label">Paid vs Remaining</span>
+              <span class="kpi-label" data-i18n="kpi.ratio">Paid vs Remaining</span>
               <div class="ratio-values">
                 <span class="ratio-paid" id="stat-paid-count">0 Paid</span>
                 <span class="ratio-divider">•</span>
@@ -147,7 +153,7 @@
           </div>
         </section>
 
-        <div class="tip-box" style="margin-top: 1.5rem;">
+        <div class="tip-box" style="margin-top: 1.5rem;" data-i18n="tip.summary">
           <strong>📊 Collection Summary:</strong> Metrics recalculate dynamically based on payment status changes. Ensure your connected Google Sheet is synced for real-time updates.
         </div>
       </div>
@@ -156,13 +162,13 @@
 
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
-      <button class="nav-item active" id="nav-btn-list" aria-label="Bungalow List">
+      <button class="nav-item active" id="nav-btn-list" data-i18n-aria="nav.bungalowsAria" aria-label="Bungalow List">
         <i class="ti ti-list-check"></i>
-        <span>Bungalows</span>
+        <span data-i18n="nav.bungalows">Bungalows</span>
       </button>
-      <button class="nav-item" id="nav-btn-stats" aria-label="Stats Dashboard">
+      <button class="nav-item" id="nav-btn-stats" data-i18n-aria="nav.dashboardAria" aria-label="Stats Dashboard">
         <i class="ti ti-chart-pie"></i>
-        <span>Dashboard</span>
+        <span data-i18n="nav.dashboard">Dashboard</span>
       </button>
     </nav>
 
@@ -177,8 +183,8 @@
   <div class="modal-overlay" id="modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="modal-title">
     <div class="modal-container">
       <header class="modal-header">
-        <h2 class="modal-title" id="modal-title">Add Bungalow Record</h2>
-        <button class="btn-modal-close" id="close-modal-btn" aria-label="Close dialog">
+        <h2 class="modal-title" id="modal-title" data-i18n="modal.addTitle">Add Bungalow Record</h2>
+        <button class="btn-modal-close" id="close-modal-btn" data-i18n-aria="modal.close" aria-label="Close dialog">
           <i class="ti ti-x" aria-hidden="true"></i>
         </button>
       </header>
@@ -187,38 +193,39 @@
         <!-- Bungalow Number -->
         <div class="form-group-row">
           <div class="form-group">
-            <label for="bungalow">Bungalow No. <span class="required">*</span></label>
-            <input type="text" id="bungalow" placeholder="e.g. A-1/A, B-10" required />
+            <label for="bungalow"><span data-i18n="modal.bungalow">Bungalow No.</span> <span class="required">*</span></label>
+            <input type="text" id="bungalow" data-i18n-placeholder="modal.bungalowPh" placeholder="e.g. A-1/A, B-10" required />
             <span class="error-msg" id="bungalow-error"></span>
           </div>
 
           <div class="form-group">
-            <label for="status">Status</label>
+            <label for="status" data-i18n="modal.status">Status</label>
             <select id="status" class="form-select">
-              <option value="Remaining">Remaining</option>
-              <option value="PAID">Paid</option>
+              <option value="Remaining" data-i18n-option="status.remaining">Remaining</option>
+              <option value="PAID" data-i18n-option="status.paid">Paid</option>
             </select>
           </div>
         </div>
 
         <!-- Owner Name -->
         <div class="form-group">
-          <label for="owner-name">Owner Name <span class="required">*</span></label>
-          <input type="text" id="owner-name" placeholder="e.g. ઈરફાન ભાઈ મેમણ" required />
+          <label for="owner-name"><span data-i18n="modal.owner">Owner Name</span> <span class="required">*</span></label>
+          <input type="text" id="owner-name" data-i18n-placeholder="modal.ownerPh" placeholder="e.g. ઈરફાન ભાઈ મેમણ" required />
           <span class="error-msg" id="owner-name-error"></span>
         </div>
 
         <!-- Phone Number -->
         <div class="form-group">
-          <label for="phone">Phone Number</label>
-          <input type="tel" id="phone" placeholder="e.g. 9876543210" />
+          <label for="phone" data-i18n="modal.phone">Phone Number</label>
+          <input type="tel" id="phone" data-i18n-placeholder="modal.phonePh" placeholder="e.g. 9876543210" />
         </div>
 
         <!-- Last Bill Number -->
         <div class="form-group">
-          <label for="last-bill-number">Last Bill Number</label>
+          <label for="last-bill-number" data-i18n="modal.lastBill">Last Bill Number</label>
           <div class="bill-number-input-row">
             <input type="text" id="last-bill-number" inputmode="numeric" autocomplete="off"
+              data-i18n-placeholder="modal.billPh"
               placeholder="e.g. 6-123 or 6/123" aria-label="Last bill number" />
             <button type="button" class="bill-char-btn" data-char="-" aria-label="Insert dash">−</button>
           </div>
@@ -227,26 +234,26 @@
 
         <!-- Payment Date -->
         <div class="form-group">
-          <label for="payment-date">Payment Date</label>
+          <label for="payment-date" data-i18n="modal.paymentDate">Payment Date</label>
           <input type="date" id="payment-date" aria-label="Payment date" />
         </div>
 
         <!-- Months & Remarks -->
         <div class="form-group">
-          <label for="months-desc">Month's Details / Remarks</label>
-          <input type="text" id="months-desc" placeholder="e.g. ઓક્ટોબર 2025 થી બાકી * 2" />
+          <label for="months-desc" data-i18n="modal.monthsDesc">Month's Details / Remarks</label>
+          <input type="text" id="months-desc" data-i18n-placeholder="modal.monthsPh" placeholder="e.g. ઓક્ટોબર 2025 થી બાકી * 2" />
         </div>
 
         <!-- Financial Row (Rate, Months Remaining, Bank Money, Method) -->
         <div class="form-group-row">
           <div class="form-group">
-            <label for="rate">Monthly Rate (₹)</label>
+            <label for="rate" data-i18n="modal.rate">Monthly Rate (₹)</label>
             <input type="number" id="rate" value="700" min="0" required />
             <span class="error-msg" id="rate-error"></span>
           </div>
 
           <div class="form-group">
-            <label for="remaining-months">Months Remaining</label>
+            <label for="remaining-months" data-i18n="modal.remainingMonths">Months Remaining</label>
             <input type="number" id="remaining-months" value="1" min="0" required />
             <span class="error-msg" id="remaining-months-error"></span>
           </div>
@@ -254,25 +261,25 @@
 
         <!-- Payment Method -->
         <div class="form-group">
-          <label for="method">Payment Method</label>
+          <label for="method" data-i18n="modal.method">Payment Method</label>
           <select id="method" class="form-select">
-            <option value="None">None</option>
-            <option value="Cash">Cash</option>
-            <option value="UPI">GPay / UPI</option>
+            <option value="None" data-i18n-option="method.none">None</option>
+            <option value="Cash" data-i18n-option="method.cash">Cash</option>
+            <option value="UPI" data-i18n-option="method.upi">GPay / UPI</option>
           </select>
         </div>
 
         <!-- Dynamic Total Calc display -->
         <div class="total-remaining-display">
-          <span>Calculated Outstanding: </span>
+          <span data-i18n="modal.calcOutstanding">Calculated Outstanding: </span>
           <strong id="calc-total-remaining">₹700</strong>
         </div>
 
         <!-- Action Buttons -->
         <div class="form-actions">
-          <button type="button" class="btn-secondary" id="cancel-modal-btn">Cancel</button>
+          <button type="button" class="btn-secondary" id="cancel-modal-btn" data-i18n="modal.cancel">Cancel</button>
           <button type="submit" class="btn-primary" id="submit-btn">
-            <span class="btn-text">Add Record</span>
+            <span class="btn-text" data-i18n="modal.addRecord">Add Record</span>
             <div class="btn-spinner" id="submit-spinner" aria-hidden="true"></div>
           </button>
         </div>
@@ -284,8 +291,8 @@
   <div class="modal-overlay" id="quickpay-overlay" aria-hidden="true" role="dialog" aria-labelledby="quickpay-title">
     <div class="modal-container" style="max-width: 400px;">
       <header class="modal-header">
-        <h2 class="modal-title" id="quickpay-title">Record Payment</h2>
-        <button class="btn-modal-close" id="close-quickpay-btn" aria-label="Close dialog">
+        <h2 class="modal-title" id="quickpay-title" data-i18n="qp.title">Record Payment</h2>
+        <button class="btn-modal-close" id="close-quickpay-btn" data-i18n-aria="modal.close" aria-label="Close dialog">
           <i class="ti ti-x" aria-hidden="true"></i>
         </button>
       </header>
@@ -293,27 +300,27 @@
       <form class="modal-form" id="quickpay-form" novalidate>
         <div class="total-remaining-display" style="background-color: var(--bg-tertiary); margin-bottom: 0.5rem;">
           <div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Bungalow</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;" data-i18n="qp.bungalow">Bungalow</span>
             <strong id="qp-bungalow-display" style="color: var(--text-primary); font-size: 1.1rem;">A-1/A</strong>
           </div>
           <div style="text-align: right;">
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Outstanding Dues</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;" data-i18n="qp.outstanding">Outstanding Dues</span>
             <strong id="qp-amount-display" style="color: #ef4444; font-size: 1.1rem;">₹700</strong>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="qp-method">Payment Method</label>
+          <label for="qp-method" data-i18n="modal.method">Payment Method</label>
           <select id="qp-method" class="form-select">
-            <option value="Cash">Cash</option>
-            <option value="UPI">GPay / UPI</option>
+            <option value="Cash" data-i18n-option="method.cash">Cash</option>
+            <option value="UPI" data-i18n-option="method.upi">GPay / UPI</option>
           </select>
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn-secondary" id="cancel-quickpay-btn">Cancel</button>
+          <button type="button" class="btn-secondary" id="cancel-quickpay-btn" data-i18n="modal.cancel">Cancel</button>
           <button type="submit" class="btn-primary" id="submit-quickpay-btn">
-            <span class="btn-text">Confirm Paid</span>
+            <span class="btn-text" data-i18n="qp.confirm">Confirm Paid</span>
             <div class="btn-spinner" id="quickpay-spinner" aria-hidden="true"></div>
           </button>
         </div>
@@ -325,8 +332,8 @@
   <div class="modal-overlay" id="advance-overlay" aria-hidden="true" role="dialog" aria-labelledby="advance-title">
     <div class="modal-container" style="max-width: 420px;">
       <header class="modal-header">
-        <h2 class="modal-title" id="advance-title">Record Advance Payment</h2>
-        <button class="btn-modal-close" id="close-advance-btn" aria-label="Close dialog">
+        <h2 class="modal-title" id="advance-title" data-i18n="adv.title">Record Advance Payment</h2>
+        <button class="btn-modal-close" id="close-advance-btn" data-i18n-aria="modal.close" aria-label="Close dialog">
           <i class="ti ti-x" aria-hidden="true"></i>
         </button>
       </header>
@@ -334,52 +341,52 @@
       <form class="modal-form" id="advance-form" novalidate>
         <div class="total-remaining-display" style="background-color: var(--bg-tertiary); margin-bottom: 0.5rem;">
           <div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Bungalow</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;" data-i18n="qp.bungalow">Bungalow</span>
             <strong id="adv-bungalow-display" style="color: var(--text-primary); font-size: 1.1rem;">A-1/A</strong>
           </div>
           <div style="text-align: right;">
-            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Monthly Rate</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;" data-i18n="adv.rate">Monthly Rate</span>
             <strong id="adv-rate-display" style="color: var(--text-primary); font-size: 1.1rem;">₹700</strong>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="adv-from-date">Paid From <span class="required">*</span></label>
+          <label for="adv-from-date"><span data-i18n="adv.from">Paid From</span> <span class="required">*</span></label>
           <input type="date" id="adv-from-date" required aria-label="Advance coverage start date" />
         </div>
 
         <div class="form-group">
-          <label for="adv-until-month">Paid Until (Month) <span class="required">*</span></label>
+          <label for="adv-until-month"><span data-i18n="adv.until">Paid Until (Month)</span> <span class="required">*</span></label>
           <input type="month" id="adv-until-month" required aria-label="Advance coverage end month" />
         </div>
 
         <div class="form-group">
-          <label for="adv-method">Payment Method</label>
+          <label for="adv-method" data-i18n="modal.method">Payment Method</label>
           <select id="adv-method" class="form-select">
-            <option value="Cash">Cash</option>
-            <option value="UPI">GPay / UPI</option>
+            <option value="Cash" data-i18n-option="method.cash">Cash</option>
+            <option value="UPI" data-i18n-option="method.upi">GPay / UPI</option>
           </select>
         </div>
 
         <div class="advance-calc-display" id="advance-calc-display">
           <div class="advance-calc-row" id="adv-pending-row" hidden>
-            <span>Pending dues</span>
+            <span data-i18n="adv.pending">Pending dues</span>
             <strong id="adv-pending-display">—</strong>
           </div>
           <div class="advance-calc-row">
-            <span>Advance</span>
+            <span data-i18n="adv.advance">Advance</span>
             <strong id="adv-advance-display">—</strong>
           </div>
           <div class="advance-calc-row advance-calc-total">
-            <span>Total</span>
+            <span data-i18n="adv.total">Total</span>
             <strong id="adv-total-display" class="advance-amount">—</strong>
           </div>
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn-secondary" id="cancel-advance-btn">Cancel</button>
+          <button type="button" class="btn-secondary" id="cancel-advance-btn" data-i18n="modal.cancel">Cancel</button>
           <button type="submit" class="btn-primary" id="submit-advance-btn">
-            <span class="btn-text">Save &amp; WhatsApp</span>
+            <span class="btn-text" data-i18n="adv.save">Save &amp; WhatsApp</span>
             <div class="btn-spinner" id="advance-spinner" aria-hidden="true"></div>
           </button>
         </div>
@@ -391,21 +398,21 @@
   <div class="modal-overlay" id="whatsapp-overlay" aria-hidden="true" role="dialog" aria-labelledby="whatsapp-title">
     <div class="modal-container" style="max-width: 400px;">
       <header class="modal-header">
-        <h2 class="modal-title" id="whatsapp-title">Payment Recorded</h2>
-        <button class="btn-modal-close" id="close-whatsapp-btn" aria-label="Close dialog">
+        <h2 class="modal-title" id="whatsapp-title" data-i18n="wa.title">Payment Recorded</h2>
+        <button class="btn-modal-close" id="close-whatsapp-btn" data-i18n-aria="modal.close" aria-label="Close dialog">
           <i class="ti ti-x" aria-hidden="true"></i>
         </button>
       </header>
 
       <div class="modal-form" style="padding-top: 0;">
-        <p class="whatsapp-prompt-text" id="whatsapp-prompt-text">
+        <p class="whatsapp-prompt-text" id="whatsapp-prompt-text" data-i18n="wa.prompt">
           Send a thank-you message on WhatsApp?
         </p>
         <div class="form-actions">
-          <button type="button" class="btn-secondary" id="wa-skip-btn">Not Now</button>
+          <button type="button" class="btn-secondary" id="wa-skip-btn" data-i18n="wa.skip">Not Now</button>
           <button type="button" class="btn-whatsapp-open" id="wa-open-btn">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            Open WhatsApp
+            <span data-i18n="wa.open">Open WhatsApp</span>
           </button>
         </div>
       </div>
@@ -414,6 +421,7 @@
 
   <!-- Load Scripts -->
   <script src="config.js"></script>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 

@@ -8,6 +8,35 @@ window.APP_CONFIG = window.APP_CONFIG || {
   fallbackData: []
 };
 
+function t(key, vars) {
+  return window.I18N ? window.I18N.t(key, vars) : key;
+}
+
+function statusLabel(status) {
+  return status === "PAID" ? t("status.paid") : t("status.remaining");
+}
+
+function methodLabel(method) {
+  if (method === "Cash") return t("method.cash");
+  if (method === "UPI") return t("method.upi");
+  if (method === "None") return t("method.none");
+  return method || t("method.none");
+}
+
+function methodLabelEn(method) {
+  if (method === "Cash") return "Cash";
+  if (method === "UPI") return "GPay / UPI";
+  if (method === "None") return "None";
+  return method || "None";
+}
+
+function methodLabelGu(method) {
+  if (method === "Cash") return "રોકડા";
+  if (method === "UPI") return "GPay / UPI";
+  if (method === "None") return "નથી";
+  return method || "નથી";
+}
+
 function getSheetReadUrl() {
   const readUrl = (window.APP_CONFIG.sheetUrl || window.APP_CONFIG.submitUrl || "").trim();
   if (!readUrl || readUrl.includes("YOUR_GOOGLE_APPS_SCRIPT")) return null;
@@ -118,6 +147,7 @@ const elements = {
 
 // Initial Setup
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.I18N) window.I18N.applyStaticI18n();
   initMobileViewportLock();
   initSecurityGate();
   registerServiceWorker();
@@ -311,7 +341,7 @@ function setupSecurityEventListeners() {
         
       } else {
         // Incorrect pin: shake container and show error
-        lockError.textContent = "Incorrect PIN. Access Denied.";
+        lockError.textContent = t("lock.error");
         lockContainer.classList.add("shake");
         
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -374,14 +404,29 @@ async function fetchData() {
 
     state.members = parsedData;
     state.connectionStatus = "online";
-    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-check"></i> Connected`;
-    elements.syncStatusLabel.style.color = "#10b981";
-    elements.syncStatusLabel.title = "";
+    updateSyncStatusLabel("online");
     
     applyFilters();
   } catch (error) {
     console.warn("Google Sheet Sync Failed. Using offline cached fallback.", error);
     loadFallbackData("network", error.message);
+  }
+}
+
+function updateSyncStatusLabel(mode, errorMessage = "") {
+  if (!elements.syncStatusLabel) return;
+  if (mode === "online") {
+    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-check"></i> ${t("sync.connected")}`;
+    elements.syncStatusLabel.style.color = "#10b981";
+    elements.syncStatusLabel.title = "";
+  } else if (mode === "config") {
+    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> ${t("sync.notConfigured")}`;
+    elements.syncStatusLabel.title = t("sync.configTitle");
+    elements.syncStatusLabel.style.color = "#ef4444";
+  } else {
+    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> ${t("sync.offline")}`;
+    elements.syncStatusLabel.title = errorMessage || t("sync.offlineTitle");
+    elements.syncStatusLabel.style.color = "#ef4444";
   }
 }
 
@@ -397,16 +442,13 @@ function loadFallbackData(reason = "network", errorMessage = "") {
   state.connectionStatus = "offline";
 
   if (reason === "config") {
-    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Not Configured`;
-    elements.syncStatusLabel.title = "Add your Google Apps Script URL in config.js";
-    showToast("⚠️ config.js missing or URL not set. Copy config.example.js → config.js and paste your Apps Script URL.");
+    updateSyncStatusLabel("config");
+    showToast(t("toast.configMissing"));
   } else {
-    elements.syncStatusLabel.innerHTML = `<i class="ti ti-cloud-off"></i> Offline — Tap to Retry`;
-    elements.syncStatusLabel.title = errorMessage || "Could not reach Google Sheet";
-    showToast("⚠️ Could not sync with Google Sheet. Showing offline data. Tap sync status to retry.");
+    updateSyncStatusLabel("offline", errorMessage);
+    showToast(t("toast.syncFailed"));
   }
 
-  elements.syncStatusLabel.style.color = "#ef4444";
   applyFilters();
 }
 
@@ -513,8 +555,8 @@ function calculateMetrics() {
   elements.statOutstanding.textContent = `₹${totalOutstanding.toLocaleString("en-IN")}`;
   elements.statEfficiency.textContent = `${efficiency}%`;
   elements.efficiencyBar.style.width = `${efficiency}%`;
-  elements.statPaidCount.textContent = `${paidCount} Paid`;
-  elements.statRemainingCount.textContent = `${remainingCount} Remaining`;
+  elements.statPaidCount.textContent = t("kpi.paid", { n: paidCount });
+  elements.statRemainingCount.textContent = t("kpi.remaining", { n: remainingCount });
 }
 
 // Filter Logic
@@ -537,14 +579,20 @@ function applyFilters() {
 
 // Render Listings
 function renderMembers(list) {
-  elements.countBadge.textContent = `${list.length} record${list.length !== 1 ? "s" : ""} listed`;
+  if (list.length === 0) {
+    elements.countBadge.textContent = t("count.zero");
+  } else if (list.length === 1) {
+    elements.countBadge.textContent = t("count.one");
+  } else {
+    elements.countBadge.textContent = t("count.many", { n: list.length });
+  }
 
   if (list.length === 0) {
     elements.resultsList.innerHTML = `
       <div class="empty-state">
         <i class="ti ti-mood-empty"></i>
-        <h3>No matching records</h3>
-        <p>Try refining your search queries or active filters.</p>
+        <h3>${t("empty.title")}</h3>
+        <p>${t("empty.body")}</p>
       </div>
     `;
     return;
@@ -561,25 +609,28 @@ function renderMembers(list) {
       advanceActive ? "advance" : "",
       advanceExpiring ? "advance-expiring" : ""
     ].filter(Boolean).join(" ");
+    const untilDate = window.I18N && window.I18N.getLang() === "gu"
+      ? formatMonthYearGujarati(m.coverageEnd)
+      : formatMonthYear(m.coverageEnd);
     
     return `
       <div class="member-card ${cardClasses}" id="member-card-${m.index}">
         <div class="card-header-row">
           <div class="bungalow-tag-wrap">
             <span class="bungalow-num">${m.bungalow}</span>
-            <span class="status-badge ${statusClass}">${m.status}</span>
+            <span class="status-badge ${statusClass}">${statusLabel(m.status)}</span>
             ${advanceActive ? `
-              <span class="advance-badge ${advanceExpiring ? "expiring" : ""}" title="Advance maintenance active">
-                <i class="ti ti-calendar-check"></i> Until ${formatMonthYear(m.coverageEnd)}
+              <span class="advance-badge ${advanceExpiring ? "expiring" : ""}" title="${t("advance.activeTitle")}">
+                <i class="ti ti-calendar-check"></i> ${t("advance.until", { date: untilDate })}
               </span>
             ` : ""}
           </div>
           
           <div class="card-actions-top">
-            <button class="btn-card-action-top edit" onclick="triggerEdit('${m.index}')" title="Edit Record">
+            <button class="btn-card-action-top edit" onclick="triggerEdit('${m.index}')" title="${t("card.edit")}">
               <i class="ti ti-edit"></i>
             </button>
-            <button class="btn-card-action-top delete" onclick="triggerDelete('${m.index}', '${m.bungalow}')" title="Delete Record">
+            <button class="btn-card-action-top delete" onclick="triggerDelete('${m.index}', '${m.bungalow}')" title="${t("card.delete")}">
               <i class="ti ti-trash"></i>
             </button>
           </div>
@@ -587,9 +638,9 @@ function renderMembers(list) {
 
         <div class="card-body">
           <div class="owner-row">
-            <span class="owner-name">${m.ownerName || '<span class="text-muted" style="font-weight: 400; font-size: 0.88rem;">No Owner Registered</span>'}</span>
+            <span class="owner-name">${m.ownerName || `<span class="text-muted" style="font-weight: 400; font-size: 0.88rem;">${t("card.noOwner")}</span>`}</span>
             ${m.phone ? `
-              <a href="tel:${m.phone}" class="owner-phone" title="Call Owner" onclick="event.stopPropagation()">
+              <a href="tel:${m.phone}" class="owner-phone" title="${t("card.callOwner")}" onclick="event.stopPropagation()">
                 <i class="ti ti-phone"></i>
                 <span>${m.phone}</span>
               </a>
@@ -607,12 +658,12 @@ function renderMembers(list) {
             <div class="payment-meta-row" style="margin-top: 0.5rem;">
               ${m.lastBillNumber ? `
                 <div class="payment-meta-item">
-                  <i class="ti ti-receipt"></i> Last Bill No.: <strong>${m.lastBillNumber}</strong>
+                  <i class="ti ti-receipt"></i> ${t("card.lastBill")} <strong>${m.lastBillNumber}</strong>
                 </div>
               ` : ""}
               ${m.paymentDate ? `
                 <div class="payment-meta-item">
-                  <i class="ti ti-calendar"></i> Payment Date: <strong>${formatDateDisplay(m.paymentDate)}</strong>
+                  <i class="ti ti-calendar"></i> ${t("card.paymentDate")} <strong>${formatDateDisplay(m.paymentDate)}</strong>
                 </div>
               ` : ""}
             </div>
@@ -621,15 +672,15 @@ function renderMembers(list) {
           <!-- Ledger Table -->
           <div class="ledger-info-grid">
             <div class="ledger-col">
-              <span class="ledger-label">Monthly Rate</span>
+              <span class="ledger-label">${t("card.monthlyRate")}</span>
               <span class="ledger-val">₹${m.rate}</span>
             </div>
             <div class="ledger-col">
-              <span class="ledger-label">Remaining</span>
-              <span class="ledger-val">${m.remainingMonths} Months</span>
+              <span class="ledger-label">${t("card.remaining")}</span>
+              <span class="ledger-val">${t("card.months", { n: m.remainingMonths })}</span>
             </div>
             <div class="ledger-col">
-              <span class="ledger-label">Outstanding</span>
+              <span class="ledger-label">${t("card.outstanding")}</span>
               <span class="ledger-val highlight ${outstandingClass}">₹${m.totalRemaining}</span>
             </div>
           </div>
@@ -637,11 +688,11 @@ function renderMembers(list) {
           <!-- Payment Meta details -->
           <div class="payment-meta-row">
             <div class="payment-meta-item">
-              <i class="ti ti-credit-card"></i> Method: <strong>${m.method}</strong>
+              <i class="ti ti-credit-card"></i> ${t("card.method")} <strong>${methodLabel(m.method)}</strong>
             </div>
             ${m.bankMoney > 0 ? `
               <div class="payment-meta-item">
-                <i class="ti ti-cash"></i> Bank Money: <strong>₹${m.bankMoney}</strong>
+                <i class="ti ti-cash"></i> ${t("card.bankMoney")} <strong>₹${m.bankMoney}</strong>
               </div>
             ` : ""}
           </div>
@@ -649,21 +700,21 @@ function renderMembers(list) {
 
         <div class="card-actions-bottom">
           ${isPaid ? `
-            <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="WhatsApp Message">
+            <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="${t("card.whatsapp")}">
               <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              WhatsApp
+              ${t("card.whatsapp")}
             </button>
           ` : `
-            <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="WhatsApp Reminder">
+            <button class="btn-share-wa" onclick="sendWhatsAppReminder('${m.index}')" title="${t("card.whatsappReminder")}">
               <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              WhatsApp Reminder
+              ${t("card.whatsappReminder")}
             </button>
-            <button class="btn-quick-pay" onclick="triggerQuickPay('${m.index}')" title="Quick Mark Paid via Cash">
-              <i class="ti ti-checkbox"></i> Mark Paid
+            <button class="btn-quick-pay" onclick="triggerQuickPay('${m.index}')" title="${t("card.markPaidTitle")}">
+              <i class="ti ti-checkbox"></i> ${t("card.markPaid")}
             </button>
           `}
-          <button class="btn-advance-pay" onclick="triggerAdvancePay('${m.index}')" title="Record Advance Payment">
-            <i class="ti ti-calendar-dollar"></i> Advance
+          <button class="btn-advance-pay" onclick="triggerAdvancePay('${m.index}')" title="${t("card.advanceTitle")}">
+            <i class="ti ti-calendar-dollar"></i> ${t("card.advance")}
           </button>
         </div>
       </div>
@@ -676,7 +727,7 @@ function showLoading() {
   elements.resultsList.innerHTML = `
     <div class="loading-state">
       <div class="loading-spinner"></div>
-      <p>Syncing maintenance database...</p>
+      <p>${t("loading")}</p>
     </div>
   `;
 }
@@ -770,8 +821,8 @@ function buildAdvanceMonthsDesc(coverageStart, coverageEnd, pendingMonths = 0) {
 }
 
 function formatMonthsAmount(months, amount) {
-  const monthsLabel = months === 1 ? "1 month" : `${months} months`;
-  return `${monthsLabel} (₹${amount.toLocaleString("en-IN")})`;
+  const monthsLabel = months === 1 ? t("month.one") : t("month.many", { n: months });
+  return t("month.amount", { months: monthsLabel, amount: amount.toLocaleString("en-IN") });
 }
 
 function calculateAdvanceBreakdown(member, fromDate, untilMonth) {
@@ -814,8 +865,17 @@ function isAdvanceExpiringSoon(member) {
   return daysLeft <= 30;
 }
 
-function getWhatsAppDateLine() {
-  return `Date: *${formatDateDisplay(getTodayDateString())}*`;
+function getWhatsAppDateLine(lang) {
+  const dateStr = formatDateDisplay(getTodayDateString());
+  return lang === "gu" ? `તારીખ: *${dateStr}*` : `Date: *${dateStr}*`;
+}
+
+function monthsLabelEn(n) {
+  return n === 1 ? "1 month" : `${n} months`;
+}
+
+function monthsLabelGu(n) {
+  return n === 1 ? "1 મહિનો" : `${n} મહિના`;
 }
 
 function buildAdvanceThankYouMessage(member, {
@@ -827,15 +887,18 @@ function buildAdvanceThankYouMessage(member, {
   pendingMonths = 0,
   pendingAmount = 0
 }) {
-  const fromLabel = formatMonthYear(coverageStart);
-  const toLabel = formatMonthYear(coverageEnd);
-  const advanceMonthsLabel = monthsCovered === 1 ? "1 month" : `${monthsCovered} months`;
+  const fromEn = formatMonthYear(coverageStart);
+  const toEn = formatMonthYear(coverageEnd);
+  const fromGu = formatMonthYearGujarati(coverageStart);
+  const toGu = formatMonthYearGujarati(coverageEnd);
   const advanceAmount = monthsCovered * member.rate;
+  const methodEn = methodLabelEn(method);
+  const methodGu = methodLabelGu(method);
 
-  let message = `Assalamu Alaikum,
+  let en = `Assalamu Alaikum,
 
 *Ihsanpark Society Maintenance — Payment Received* ✅
-${getWhatsAppDateLine()}
+${getWhatsAppDateLine("en")}
 Bungalow: *${member.bungalow}*
 Owner: *${member.ownerName}*
 
@@ -844,18 +907,33 @@ JazakAllah! Thank you for your maintenance payment.
 *Payment breakdown:*`;
 
   if (pendingMonths > 0) {
-    const pendingLabel = pendingMonths === 1 ? "1 month" : `${pendingMonths} months`;
-    message += `\n• Pending cleared: *${pendingLabel}* (*₹${pendingAmount.toLocaleString("en-IN")}*)`;
+    en += `\n• Pending cleared: *${monthsLabelEn(pendingMonths)}* (*₹${pendingAmount.toLocaleString("en-IN")}*)`;
   }
+  en += `\n• Advance: *${fromEn}* to *${toEn}* (*${monthsLabelEn(monthsCovered)}* | *₹${advanceAmount.toLocaleString("en-IN")}*)`;
+  en += `\n• *Total paid: ₹${amountPaid.toLocaleString("en-IN")}*`;
+  en += `\nMethod: *${methodEn}*`;
+  en += `\n\nYour maintenance is fully covered until *${toEn}*. ✅`;
 
-  message += `\n• Advance: *${fromLabel}* to *${toLabel}* (*${advanceMonthsLabel}* | *₹${advanceAmount.toLocaleString("en-IN")}*)`;
-  message += `\n• *Total paid: ₹${amountPaid.toLocaleString("en-IN")}*`;
-  message += `\nMethod: *${method}*`;
+  let gu = `સલામ,
 
-  message += `\n\nYour maintenance is fully covered until *${toLabel}*. ✅`;
-  message += `\n\nJazakAllah for your support!`;
+*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅
+${getWhatsAppDateLine("gu")}
+બંગલો: *${member.bungalow}*
+માલિક: *${member.ownerName}*
 
-  return message;
+જઝાકઅલ્લાહ! તમારા મેન્ટેનન્સ પેમેન્ટ બદલ આભાર.
+
+*પેમેન્ટ વિગત:*`;
+
+  if (pendingMonths > 0) {
+    gu += `\n• બાકી ચૂકવ્યું: *${monthsLabelGu(pendingMonths)}* (*₹${pendingAmount.toLocaleString("en-IN")}*)`;
+  }
+  gu += `\n• એડવાન્સ: *${fromGu}* થી *${toGu}* (*${monthsLabelGu(monthsCovered)}* | *₹${advanceAmount.toLocaleString("en-IN")}*)`;
+  gu += `\n• *કુલ ચૂકવેલ: ₹${amountPaid.toLocaleString("en-IN")}*`;
+  gu += `\nપદ્ધતિ: *${methodGu}*`;
+  gu += `\n\nતમારું મેન્ટેનન્સ *${toGu}* સુધી પૂરું કવર છે. ✅`;
+
+  return `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
 }
 
 function promptAdvanceThankYou(member, advanceInfo) {
@@ -866,8 +944,8 @@ function promptAdvanceThankYou(member, advanceInfo) {
 
   if (elements.waPromptText) {
     elements.waPromptText.textContent = hasPhone
-      ? `Advance payment saved for Bungalow ${member.bungalow}. Tap Open WhatsApp to notify ${member.ownerName}.`
-      : "Advance payment saved. No phone on record — WhatsApp will open so you can pick a contact.";
+      ? t("wa.promptAdvance", { bungalow: member.bungalow, owner: member.ownerName })
+      : t("wa.promptAdvanceNoPhone");
   }
 
   openWhatsAppModal();
@@ -949,37 +1027,49 @@ function closeWhatsAppModal() {
 
 function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
   const isFullyPaid = member.remainingMonths === 0 || member.status === "PAID";
-  const monthsLabel = monthsPaid === 1 ? "1 month" : `${monthsPaid} months`;
+  const methodEn = methodLabelEn(method);
+  const methodGu = methodLabelGu(method);
 
-  let message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\n${getWhatsAppDateLine()}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
+  let en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
+  let gu = `સલામ,\n\n*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nજઝાકઅલ્લાહ! તમારા મેન્ટેનન્સ પેમેન્ટ બદલ આભાર.\n\n`;
 
   if (monthsPaid > 0) {
-    message += `You paid: *${monthsLabel}* maintenance (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
+    en += `You paid: *${monthsLabelEn(monthsPaid)}* maintenance (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
+    gu += `તમે ચૂકવ્યું: *${monthsLabelGu(monthsPaid)}* મેન્ટેનન્સ (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
     if (method && method !== "None") {
-      message += `Method: *${method}*\n`;
+      en += `Method: *${methodEn}*\n`;
+      gu += `પદ્ધતિ: *${methodGu}*\n`;
     }
   } else if (isFullyPaid && method && method !== "None") {
-    message += `Method: *${method}*\n`;
+    en += `Method: *${methodEn}*\n`;
+    gu += `પદ્ધતિ: *${methodGu}*\n`;
   }
 
   if (isFullyPaid) {
-    message += `\n*All outstanding dues are now cleared.* ✅\nOutstanding: *₹0* | Remaining: *0 month(s)*`;
+    en += `\n*All outstanding dues are now cleared.* ✅\nOutstanding: *₹0* | Remaining: *0 month(s)*`;
+    gu += `\n*બધી બાકી રકમ હવે ચૂકવાઈ ગઈ છે.* ✅\nબાકી: *₹0* | બાકી મહિના: *0*`;
     if (member.monthsDesc) {
-      message += `\nDetails: ${member.monthsDesc}`;
+      en += `\nDetails: ${member.monthsDesc}`;
+      gu += `\nવિગત: ${member.monthsDesc}`;
     }
   } else {
-    message += `\n*Remaining outstanding:*\n`;
-    message += `• Pending months: *${member.remainingMonths} month(s)*\n`;
-    message += `• Amount due: *₹${member.totalRemaining.toLocaleString("en-IN")}*\n`;
-    message += `• Rate: ₹${member.rate}/month`;
+    en += `\n*Remaining outstanding:*\n`;
+    en += `• Pending months: *${member.remainingMonths} month(s)*\n`;
+    en += `• Amount due: *₹${member.totalRemaining.toLocaleString("en-IN")}*\n`;
+    en += `• Rate: ₹${member.rate}/month`;
+    gu += `\n*બાકી રકમ:*\n`;
+    gu += `• બાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\n`;
+    gu += `• બાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}*\n`;
+    gu += `• દર: ₹${member.rate}/મહિનો`;
     if (member.monthsDesc) {
-      message += `\n• Details: ${member.monthsDesc}`;
+      en += `\n• Details: ${member.monthsDesc}`;
+      gu += `\n• વિગત: ${member.monthsDesc}`;
     }
-    message += `\n\nPlease clear the remaining dues when possible.`;
+    en += `\n\nPlease clear the remaining dues when possible.`;
+    gu += `\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
   }
 
-  message += `\n\nJazakAllah for your support!`;
-  return message;
+  return `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
 }
 
 function detectPaymentFromEdit(before, after) {
@@ -1013,8 +1103,8 @@ function promptPaymentThankYou(member, paymentInfo) {
 
   if (elements.waPromptText) {
     elements.waPromptText.textContent = hasPhone
-      ? `Payment saved for Bungalow ${member.bungalow}. Tap Open WhatsApp to send thank-you to ${member.ownerName}.`
-      : "Payment saved. No phone on record — WhatsApp will open so you can pick a contact.";
+      ? t("wa.promptPayment", { bungalow: member.bungalow, owner: member.ownerName })
+      : t("wa.promptPaymentNoPhone");
   }
 
   openWhatsAppModal();
@@ -1041,7 +1131,11 @@ window.sendWhatsAppReminder = function(index) {
   } else if (isPaid) {
     message = buildThankYouMessage(member, { monthsPaid: 0, amountPaid: 0, method: member.method });
   } else {
-    message = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine()}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${member.remainingMonths} month(s)*\nRate: ₹${member.rate}/month\nDetails: ${member.monthsDesc || "Pending maintenance payment."}\n\nPlease clear the dues as soon as possible.\n\nJazakAllah!`;
+    const details = member.monthsDesc || "Pending maintenance payment.";
+    const detailsGu = member.monthsDesc || "મેન્ટેનન્સ પેમેન્ટ બાકી છે.";
+    const en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${monthsLabelEn(member.remainingMonths)}*\nRate: ₹${member.rate}/month\nDetails: ${details}\n\nPlease clear the dues as soon as possible.`;
+    const gu = `સલામ,\n\n*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ રિમાઇન્ડર*\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nબાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nબાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\nદર: ₹${member.rate}/મહિનો\nવિગત: ${detailsGu}\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
+    message = `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
   }
 
   openWhatsApp(member, message);
@@ -1050,8 +1144,8 @@ window.sendWhatsAppReminder = function(index) {
 // Modal Operations
 function openModal() {
   state.editIndex = null;
-  document.getElementById("modal-title").textContent = "Add Bungalow Record";
-  elements.submitBtn.querySelector(".btn-text").textContent = "Add Record";
+  document.getElementById("modal-title").textContent = t("modal.addTitle");
+  elements.submitBtn.querySelector(".btn-text").textContent = t("modal.addRecord");
   
   elements.modalOverlay.classList.add("open");
   elements.modalOverlay.setAttribute("aria-hidden", "false");
@@ -1206,13 +1300,13 @@ async function handleAdvanceSubmit(e) {
   const methodVal = elements.advMethod.value;
 
   if (!fromDate || !untilMonth) {
-    showToast("❌ Please select both start date and end month.");
+    showToast(t("toast.advDates"));
     return;
   }
 
   const monthsCovered = countMonthsInRange(fromDate, untilMonth);
   if (monthsCovered <= 0) {
-    showToast("❌ End month must be on or after the start date.");
+    showToast(t("toast.advRange"));
     return;
   }
 
@@ -1253,7 +1347,7 @@ async function handleAdvanceSubmit(e) {
       const updatedMember = { ...state.members[localIdx], ...updatedFields };
       state.members[localIdx] = updatedMember;
       applyFilters();
-      showToast("🎉 Advance payment saved locally!");
+      showToast(t("toast.advLocal"));
       closeAdvanceModal();
       promptAdvanceThankYou(updatedMember, advanceInfo);
     }
@@ -1285,7 +1379,7 @@ async function handleAdvanceSubmit(e) {
       if (localIdx !== -1) {
         const updatedMember = { ...state.members[localIdx], ...updatedFields };
         state.members[localIdx] = updatedMember;
-        showToast("🎉 Advance payment saved!");
+        showToast(t("toast.advSaved"));
         applyFilters();
         closeAdvanceModal();
         promptAdvanceThankYou(updatedMember, advanceInfo);
@@ -1295,7 +1389,7 @@ async function handleAdvanceSubmit(e) {
     }
   } catch (error) {
     console.error("Advance Payment Failed:", error);
-    showToast("❌ Sync failure. Failed to save advance payment.");
+    showToast(t("toast.advFail"));
   } finally {
     elements.advSubmitBtn.disabled = false;
     elements.advSubmitBtn.classList.remove("loading");
@@ -1335,7 +1429,7 @@ async function handleQuickPaySubmit(e) {
       state.members[localIdx] = updatedMember;
 
       applyFilters();
-      showToast("🎉 Record updated locally!");
+      showToast(t("toast.updLocal"));
       closeQuickPayModal();
       promptPaymentThankYou(updatedMember, { monthsPaid, amountPaid, method: methodVal });
     }
@@ -1382,7 +1476,7 @@ async function handleQuickPaySubmit(e) {
           paymentDate: getTodayDateString()
         };
         state.members[localIdx] = updatedMember;
-        showToast("🎉 Status updated successfully!");
+        showToast(t("toast.qpSaved"));
         applyFilters();
         closeQuickPayModal();
         promptPaymentThankYou(updatedMember, { monthsPaid, amountPaid, method: methodVal });
@@ -1392,7 +1486,7 @@ async function handleQuickPaySubmit(e) {
     }
   } catch (error) {
     console.error("Quick Pay Failed:", error);
-    showToast("❌ Sync failure. Failed to update status.");
+    showToast(t("toast.qpFail"));
   } finally {
     elements.qpSubmitBtn.disabled = false;
     elements.qpSubmitBtn.classList.remove("loading");
@@ -1420,8 +1514,8 @@ window.triggerEdit = function(index) {
 
   autoCalculateTotal();
 
-  document.getElementById("modal-title").textContent = "Edit Bungalow Details";
-  elements.submitBtn.querySelector(".btn-text").textContent = "Save Changes";
+  document.getElementById("modal-title").textContent = t("modal.editTitle");
+  elements.submitBtn.querySelector(".btn-text").textContent = t("modal.saveChanges");
   
   elements.modalOverlay.classList.add("open");
   elements.modalOverlay.setAttribute("aria-hidden", "false");
@@ -1431,7 +1525,7 @@ window.triggerEdit = function(index) {
 
 // Delete record trigger
 window.triggerDelete = async function(index, bungalow) {
-  if (!confirm(`Are you sure you want to delete record for Bungalow ${bungalow}?`)) {
+  if (!confirm(t("confirm.delete", { bungalow }))) {
     return;
   }
 
@@ -1440,7 +1534,7 @@ window.triggerDelete = async function(index, bungalow) {
   if (state.connectionStatus === "offline" || !submitUrl) {
     state.members = state.members.filter(m => m.index.toString() !== index.toString());
     applyFilters();
-    showToast("🗑️ Record deleted locally!");
+    showToast(t("toast.delLocal"));
     return;
   }
 
@@ -1471,18 +1565,18 @@ window.triggerDelete = async function(index, bungalow) {
         card.style.opacity = "0";
         setTimeout(() => {
           applyFilters();
-          showToast("🗑️ Record deleted successfully!");
+          showToast(t("toast.delSaved"));
         }, 300);
       } else {
         applyFilters();
-        showToast("🗑️ Record deleted successfully!");
+        showToast(t("toast.delSaved"));
       }
     } else {
       throw new Error(result.message || "Delete rejected by Apps Script");
     }
   } catch (error) {
     console.error("Delete Failed:", error);
-    showToast("❌ Sync failure. Failed to delete record.");
+    showToast(t("toast.delFail"));
     if (card) {
       card.style.opacity = "1";
       card.style.pointerEvents = "auto";
@@ -1516,31 +1610,31 @@ async function handleFormSubmit(e) {
 
   if (!bungalowVal) {
     elements.bungalow.classList.add("invalid");
-    elements.bungalowError.textContent = "Bungalow number is required.";
+    elements.bungalowError.textContent = t("err.bungalow");
     isValid = false;
   }
 
   if (!ownerVal) {
     elements.ownerName.classList.add("invalid");
-    elements.ownerNameError.textContent = "Owner name is required.";
+    elements.ownerNameError.textContent = t("err.owner");
     isValid = false;
   }
 
   if (isNaN(rateVal) || rateVal < 0) {
     elements.rate.classList.add("invalid");
-    elements.rateError.textContent = "Please enter a valid rate (>=0).";
+    elements.rateError.textContent = t("err.rate");
     isValid = false;
   }
 
   if (isNaN(remainingMonthsVal) || remainingMonthsVal < 0) {
     elements.remainingMonths.classList.add("invalid");
-    elements.remainingMonthsError.textContent = "Please enter a valid count (>=0).";
+    elements.remainingMonthsError.textContent = t("err.months");
     isValid = false;
   }
 
   if (lastBillNumberVal && !/^[\d\-\/]+$/.test(lastBillNumberVal)) {
     elements.lastBillNumber.classList.add("invalid");
-    elements.lastBillNumberError.textContent = "Use numbers only (e.g. 6-123 or 6/123).";
+    elements.lastBillNumberError.textContent = t("err.bill");
     isValid = false;
   }
 
@@ -1606,14 +1700,14 @@ async function handleFormSubmit(e) {
     if (isEditing) {
       const localIdx = state.members.findIndex(m => m.index.toString() === state.editIndex.toString());
       if (localIdx !== -1) state.members[localIdx] = newRecord;
-      showToast("🎉 Record updated locally!");
+      showToast(t("toast.updLocal"));
       const paymentInfo = detectPaymentFromEdit(memberBeforeEdit, newRecord);
       if (paymentInfo) {
         promptPaymentThankYou(newRecord, paymentInfo);
       }
     } else {
       state.members.push(newRecord);
-      showToast("🎉 Record added locally!");
+      showToast(t("toast.addLocal"));
     }
 
     applyFilters();
@@ -1648,14 +1742,14 @@ async function handleFormSubmit(e) {
       if (isEditing) {
         const localIdx = state.members.findIndex(m => m.index.toString() === state.editIndex.toString());
         if (localIdx !== -1) state.members[localIdx] = updatedRecord;
-        showToast("🎉 Record updated successfully!");
+        showToast(t("toast.updSaved"));
         const paymentInfo = detectPaymentFromEdit(memberBeforeEdit, updatedRecord);
         if (paymentInfo) {
           promptPaymentThankYou(updatedRecord, paymentInfo);
         }
       } else {
         state.members.push(updatedRecord);
-        showToast("🎉 Record added successfully!");
+        showToast(t("toast.addSaved"));
       }
 
       applyFilters();
@@ -1675,7 +1769,7 @@ async function handleFormSubmit(e) {
     }
   } catch (error) {
     console.error("Submission failed:", error);
-    showToast("❌ Connection error. Failed to save changes.");
+    showToast(t("toast.saveFail"));
   } finally {
     elements.submitBtn.disabled = false;
     elements.submitBtn.classList.remove("loading");
@@ -1684,6 +1778,20 @@ async function handleFormSubmit(e) {
 
 // Event Listeners setup
 function setupEventListeners() {
+  // Language toggle
+  document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.getAttribute("data-lang-btn");
+      if (!window.I18N || next === window.I18N.getLang()) return;
+      window.I18N.setLang(next, () => {
+        if (state.connectionStatus === "online") updateSyncStatusLabel("online");
+        else if (state.connectionStatus === "offline") updateSyncStatusLabel("offline");
+        applyFilters();
+        if (state.advancePayIndex) updateAdvanceCalcDisplay();
+      });
+    });
+  });
+
   // Tap sync status to retry when offline
   elements.syncStatusLabel.addEventListener("click", () => {
     if (state.connectionStatus === "offline") {

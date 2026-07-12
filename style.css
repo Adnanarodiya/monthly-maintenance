@@ -171,6 +171,32 @@ textarea {
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 8px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.lang-btn.active {
+  background: var(--primary);
+  color: #ffffff;
 }
 
 .btn-add-member {

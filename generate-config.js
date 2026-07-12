@@ -57,5 +57,8 @@ if (fs.existsSync(path.join(__dirname, 'manifest.json'))) {
 if (fs.existsSync(path.join(__dirname, 'sw.js'))) {
   fs.copyFileSync(path.join(__dirname, 'sw.js'), path.join(publicDir, 'sw.js'));
 }
+if (fs.existsSync(path.join(__dirname, 'i18n.js'))) {
+  fs.copyFileSync(path.join(__dirname, 'i18n.js'), path.join(publicDir, 'i18n.js'));
+}
 
 console.log('Build assets copied to public/.');
