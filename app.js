@@ -916,7 +916,7 @@ JazakAllah! Thank you for your maintenance payment.
 
   let gu = `સલામ,
 
-*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅
+*એહસાન પાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅
 ${getWhatsAppDateLine("gu")}
 બંગલો: *${member.bungalow}*
 માલિક: *${member.ownerName}*
@@ -1031,7 +1031,7 @@ function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
   const methodGu = methodLabelGu(method);
 
   let en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance — Payment Received* ✅\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nJazakAllah! Thank you for your maintenance payment.\n\n`;
-  let gu = `સલામ,\n\n*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nજઝાકઅલ્લાહ! તમારા મેન્ટેનન્સ પેમેન્ટ બદલ આભાર.\n\n`;
+  let gu = `સલામ,\n\n*એહસાન પાર્ક સોસાયટી મેન્ટેનન્સ — પેમેન્ટ મળ્યું* ✅\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nજઝાકઅલ્લાહ! તમારા મેન્ટેનન્સ પેમેન્ટ બદલ આભાર.\n\n`;
 
   if (monthsPaid > 0) {
     en += `You paid: *${monthsLabelEn(monthsPaid)}* maintenance (*₹${amountPaid.toLocaleString("en-IN")}*)\n`;
@@ -1134,7 +1134,7 @@ window.sendWhatsAppReminder = function(index) {
     const details = member.monthsDesc || "Pending maintenance payment.";
     const detailsGu = member.monthsDesc || "મેન્ટેનન્સ પેમેન્ટ બાકી છે.";
     const en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${monthsLabelEn(member.remainingMonths)}*\nRate: ₹${member.rate}/month\nDetails: ${details}\n\nPlease clear the dues as soon as possible.`;
-    const gu = `સલામ,\n\n*ઇહસાનપાર્ક સોસાયટી મેન્ટેનન્સ રિમાઇન્ડર*\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nબાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nબાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\nદર: ₹${member.rate}/મહિનો\nવિગત: ${detailsGu}\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
+    const gu = `સલામ,\n\n*એહસાન પાર્ક સોસાયટી મેન્ટેનન્સ રિમાઇન્ડર*\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nબાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nબાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\nદર: ₹${member.rate}/મહિનો\nવિગત: ${detailsGu}\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
     message = `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
   }
 
