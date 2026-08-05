@@ -4,8 +4,7 @@
 
 window.APP_CONFIG = window.APP_CONFIG || {
   sheetUrl: "",
-  submitUrl: "",
-  fallbackData: []
+  submitUrl: ""
 };
 
 function t(key, vars) {
@@ -41,6 +40,24 @@ function getSheetReadUrl() {
   const readUrl = (window.APP_CONFIG.sheetUrl || window.APP_CONFIG.submitUrl || "").trim();
   if (!readUrl || readUrl.includes("YOUR_GOOGLE_APPS_SCRIPT")) return null;
   return readUrl;
+}
+
+function getSubmitUrl() {
+  const submitUrl = (window.APP_CONFIG.submitUrl || "").trim();
+  if (!submitUrl || submitUrl.includes("YOUR_GOOGLE_APPS_SCRIPT")) return null;
+  return submitUrl;
+}
+
+function requireLiveSync() {
+  if (!getSubmitUrl()) {
+    showToast(t("toast.configMissing"));
+    return false;
+  }
+  if (state.connectionStatus !== "online") {
+    showToast(t("toast.offlineBlocked"));
+    return false;
+  }
+  return true;
 }
 
 // State Management
@@ -149,8 +166,7 @@ const elements = {
 document.addEventListener("DOMContentLoaded", () => {
   if (window.I18N) window.I18N.applyStaticI18n();
   initMobileViewportLock();
-  initSecurityGate();
-  registerServiceWorker();
+  clearStaleCaches().finally(() => initSecurityGate());
 });
 
 let openOverlayCount = 0;
@@ -198,11 +214,15 @@ function initMobileViewportLock() {
   }
 }
 
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('PWA Service Worker registered successfully!', reg))
-      .catch((err) => console.error('PWA Service Worker registration failed:', err));
+async function clearStaleCaches() {
+  if ("caches" in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((key) => caches.delete(key)));
+  }
+
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((reg) => reg.unregister()));
   }
 }
 
@@ -370,13 +390,13 @@ async function fetchData() {
 
   if (!readUrl) {
     console.warn("Google Sheet URL is missing or not configured in config.js.");
-    loadFallbackData("config");
+    handleFetchFailure("config");
     return;
   }
 
   try {
-    const fetchUrl = `${readUrl}${readUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`;
-    const response = await fetch(fetchUrl);
+    const fetchUrl = `${readUrl}${readUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
+    const response = await fetch(fetchUrl, { cache: "no-store" });
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -408,8 +428,8 @@ async function fetchData() {
     
     applyFilters();
   } catch (error) {
-    console.warn("Google Sheet Sync Failed. Using offline cached fallback.", error);
-    loadFallbackData("network", error.message);
+    console.warn("Google Sheet sync failed:", error);
+    handleFetchFailure("network", error.message);
   }
 }
 
@@ -430,15 +450,8 @@ function updateSyncStatusLabel(mode, errorMessage = "") {
   }
 }
 
-function loadFallbackData(reason = "network", errorMessage = "") {
-  const fallback = Array.isArray(window.APP_CONFIG.fallbackData)
-    ? window.APP_CONFIG.fallbackData
-    : [];
-
-  state.members = fallback.map(m => ({
-    ...m,
-    status: m.remainingMonths === 0 ? "PAID" : "Remaining"
-  }));
+function handleFetchFailure(reason = "network", errorMessage = "") {
+  state.members = [];
   state.connectionStatus = "offline";
 
   if (reason === "config") {
@@ -1317,8 +1330,6 @@ async function handleAdvanceSubmit(e) {
   const monthsDesc = buildAdvanceMonthsDesc(fromDate, coverageEnd, breakdown.pendingMonths);
   const paymentDate = getTodayDateString();
 
-  const submitUrl = window.APP_CONFIG.submitUrl;
-
   const updatedFields = {
     status: "PAID",
     method: methodVal,
@@ -1341,18 +1352,8 @@ async function handleAdvanceSubmit(e) {
     pendingAmount: breakdown.pendingAmount
   };
 
-  if (state.connectionStatus === "offline" || !submitUrl) {
-    const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
-    if (localIdx !== -1) {
-      const updatedMember = { ...state.members[localIdx], ...updatedFields };
-      state.members[localIdx] = updatedMember;
-      applyFilters();
-      showToast(t("toast.advLocal"));
-      closeAdvanceModal();
-      promptAdvanceThankYou(updatedMember, advanceInfo);
-    }
-    return;
-  }
+  const submitUrl = getSubmitUrl();
+  if (!requireLiveSync()) return;
 
   elements.advSubmitBtn.disabled = true;
   elements.advSubmitBtn.classList.add("loading");
@@ -1367,6 +1368,7 @@ async function handleAdvanceSubmit(e) {
     const response = await fetch(submitUrl, {
       method: "POST",
       mode: "cors",
+      cache: "no-store",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
@@ -1410,31 +1412,8 @@ async function handleQuickPaySubmit(e) {
   const monthsPaid = member.remainingMonths;
   const amountPaid = member.totalRemaining;
 
-  const submitUrl = window.APP_CONFIG.submitUrl;
-  
-  // If offline or submitUrl isn't configured, do local state change
-  if (state.connectionStatus === "offline" || !submitUrl) {
-    const localIdx = state.members.findIndex(m => m.index.toString() === index.toString());
-    if (localIdx !== -1) {
-      const updatedMember = {
-        ...state.members[localIdx],
-        status: "PAID",
-        method: methodVal,
-        bankMoney: bankMoneyVal,
-        remainingMonths: 0,
-        totalRemaining: 0,
-        monthsDesc: "PAID UP TO DATE",
-        paymentDate: getTodayDateString()
-      };
-      state.members[localIdx] = updatedMember;
-
-      applyFilters();
-      showToast(t("toast.updLocal"));
-      closeQuickPayModal();
-      promptPaymentThankYou(updatedMember, { monthsPaid, amountPaid, method: methodVal });
-    }
-    return;
-  }
+  const submitUrl = getSubmitUrl();
+  if (!requireLiveSync()) return;
 
   // Set loading state
   elements.qpSubmitBtn.disabled = true;
@@ -1455,6 +1434,7 @@ async function handleQuickPaySubmit(e) {
     const response = await fetch(submitUrl, {
       method: "POST",
       mode: "cors",
+      cache: "no-store",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
@@ -1529,14 +1509,8 @@ window.triggerDelete = async function(index, bungalow) {
     return;
   }
 
-  const submitUrl = window.APP_CONFIG.submitUrl;
-
-  if (state.connectionStatus === "offline" || !submitUrl) {
-    state.members = state.members.filter(m => m.index.toString() !== index.toString());
-    applyFilters();
-    showToast(t("toast.delLocal"));
-    return;
-  }
+  const submitUrl = getSubmitUrl();
+  if (!requireLiveSync()) return;
 
   const card = document.getElementById(`member-card-${index}`);
   if (card) {
@@ -1548,6 +1522,7 @@ window.triggerDelete = async function(index, bungalow) {
     const response = await fetch(submitUrl, {
       method: "POST",
       mode: "cors",
+      cache: "no-store",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "delete",
@@ -1644,11 +1619,13 @@ async function handleFormSubmit(e) {
     return;
   }
 
-  const submitUrl = window.APP_CONFIG.submitUrl;
   const isEditing = state.editIndex !== null;
   const memberBeforeEdit = isEditing
     ? state.members.find(m => m.index.toString() === state.editIndex.toString())
     : null;
+
+  const submitUrl = getSubmitUrl();
+  if (!requireLiveSync()) return;
 
   let bankMoneyVal = 0;
   if (elements.method.value === "UPI") {
@@ -1688,34 +1665,6 @@ async function handleFormSubmit(e) {
     payload.index = state.editIndex;
   }
 
-  // If offline, apply locally
-  if (state.connectionStatus === "offline" || !submitUrl) {
-    const targetIdx = isEditing ? state.editIndex : `L${new Date().getTime()}`;
-    const newRecord = {
-      index: targetIdx,
-      ...payload,
-      totalRemaining: payload.rate * payload.remainingMonths
-    };
-
-    if (isEditing) {
-      const localIdx = state.members.findIndex(m => m.index.toString() === state.editIndex.toString());
-      if (localIdx !== -1) state.members[localIdx] = newRecord;
-      showToast(t("toast.updLocal"));
-      const paymentInfo = detectPaymentFromEdit(memberBeforeEdit, newRecord);
-      if (paymentInfo) {
-        promptPaymentThankYou(newRecord, paymentInfo);
-      }
-    } else {
-      state.members.push(newRecord);
-      showToast(t("toast.addLocal"));
-    }
-
-    applyFilters();
-    closeModal();
-    return;
-  }
-
-  // Set loading state
   elements.submitBtn.disabled = true;
   elements.submitBtn.classList.add("loading");
 
@@ -1723,6 +1672,7 @@ async function handleFormSubmit(e) {
     const response = await fetch(submitUrl, {
       method: "POST",
       mode: "cors",
+      cache: "no-store",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
