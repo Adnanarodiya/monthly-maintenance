@@ -376,6 +376,10 @@ textarea {
   border-color: #fcd34d;
 }
 
+.member-card.additional-pending {
+  border-color: #fbbf24;
+}
+
 .card-header-row {
   display: flex;
   justify-content: space-between;
@@ -488,6 +492,35 @@ textarea {
 
 .remarks-box i {
   color: var(--text-secondary);
+}
+
+.additional-pending-box {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: #92400e;
+  font-size: 0.78rem;
+}
+
+.additional-pending-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.additional-pending-title strong {
+  margin-left: auto;
+  color: #b45309;
+  white-space: nowrap;
+}
+
+.additional-pending-note {
+  margin-top: 3px;
+  color: #78350f;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 
 /* Financial Ledger grid */
@@ -953,7 +986,9 @@ textarea {
   color: #ef4444;
 }
 
-.form-group input, .form-select {
+.form-group input,
+.form-group textarea,
+.form-select {
   padding: 8px 10px;
   font-family: var(--font-body);
   font-size: 16px;
@@ -965,12 +1000,20 @@ textarea {
   outline: none;
 }
 
-.form-group input:focus, .form-select:focus {
+.form-group textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-select:focus {
   background-color: var(--bg-secondary);
   border-color: var(--primary);
 }
 
-.form-group input.invalid {
+.form-group input.invalid,
+.form-group textarea.invalid {
   border-color: #ef4444;
 }
 

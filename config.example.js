@@ -19,6 +19,8 @@ window.APP_CONFIG = {
       rate: 300,
       remainingMonths: 35,
       totalRemaining: 10500,
+      additionalPendingAmount: 0,
+      additionalPendingNote: "",
       phone: ""
     },
     {

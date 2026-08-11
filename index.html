@@ -244,6 +244,22 @@
           <input type="text" id="months-desc" data-i18n-placeholder="modal.monthsPh" placeholder="e.g. ઓક્ટોબર 2025 થી બાકી * 2" />
         </div>
 
+        <!-- Additional Pending -->
+        <div class="form-group">
+          <label for="additional-pending-amount" data-i18n="modal.additionalPendingAmount">Additional Pending Amount (₹)</label>
+          <input type="number" id="additional-pending-amount" value="0" min="0"
+            data-i18n-placeholder="modal.additionalPendingAmountPh" placeholder="e.g. 2100" />
+          <span class="error-msg" id="additional-pending-amount-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="additional-pending-note" data-i18n="modal.additionalPendingNote">Additional Pending Note</label>
+          <textarea id="additional-pending-note" rows="3"
+            data-i18n-placeholder="modal.additionalPendingNotePh"
+            placeholder="e.g. Old member pending: 3 × 700 = 2100"></textarea>
+          <span class="field-hint" data-i18n="modal.additionalPendingHint">Shown in WhatsApp only when additional pending amount is greater than 0.</span>
+        </div>
+
         <!-- Financial Row (Rate, Months Remaining, Bank Money, Method) -->
         <div class="form-group-row">
           <div class="form-group">

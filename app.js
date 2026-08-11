@@ -91,6 +91,8 @@ const elements = {
   lastBillNumber: document.getElementById("last-bill-number"),
   paymentDate: document.getElementById("payment-date"),
   monthsDesc: document.getElementById("months-desc"),
+  additionalPendingAmount: document.getElementById("additional-pending-amount"),
+  additionalPendingNote: document.getElementById("additional-pending-note"),
   rate: document.getElementById("rate"),
   remainingMonths: document.getElementById("remaining-months"),
   method: document.getElementById("method"),
@@ -101,6 +103,7 @@ const elements = {
   ownerNameError: document.getElementById("owner-name-error"),
   rateError: document.getElementById("rate-error"),
   remainingMonthsError: document.getElementById("remaining-months-error"),
+  additionalPendingAmountError: document.getElementById("additional-pending-amount-error"),
   lastBillNumberError: document.getElementById("last-bill-number-error"),
 
   // Quick Pay Modal elements
@@ -437,6 +440,8 @@ function loadFallbackData(reason = "network", errorMessage = "") {
 
   state.members = fallback.map(m => ({
     ...m,
+    additionalPendingAmount: Number(m.additionalPendingAmount) || 0,
+    additionalPendingNote: m.additionalPendingNote || "",
     status: m.remainingMonths === 0 ? "PAID" : "Remaining"
   }));
   state.connectionStatus = "offline";
@@ -482,6 +487,8 @@ function parseCSV(text) {
     const paymentDate = normalizeDateForInput(cols[12] || "");
     const coverageStart = normalizeDateForInput(cols[13] || "");
     const coverageEnd = normalizeDateForInput(cols[14] || "");
+    const additionalPendingAmount = Number(cols[15]) || 0;
+    const additionalPendingNote = cols[16] || "";
 
     records.push({
       index: indexVal,
@@ -498,7 +505,9 @@ function parseCSV(text) {
       lastBillNumber: lastBillNumber.trim(),
       paymentDate: paymentDate,
       coverageStart: coverageStart,
-      coverageEnd: coverageEnd
+      coverageEnd: coverageEnd,
+      additionalPendingAmount: additionalPendingAmount,
+      additionalPendingNote: additionalPendingNote.trim()
     });
   }
   return records;
@@ -532,6 +541,23 @@ function parseCSVRow(rowText) {
   });
 }
 
+function getAdditionalPendingAmount(member) {
+  return Math.max(0, Number(member.additionalPendingAmount) || 0);
+}
+
+function getAdditionalPendingNote(member) {
+  return (member.additionalPendingNote || "").trim();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Calculate and Update KPI summary metrics
 function calculateMetrics() {
   const list = state.members;
@@ -546,6 +572,7 @@ function calculateMetrics() {
       remainingCount++;
       totalOutstanding += m.totalRemaining;
     }
+    totalOutstanding += getAdditionalPendingAmount(m);
   });
 
   const totalMembers = list.length;
@@ -570,6 +597,8 @@ function applyFilters() {
       m.ownerName.toLowerCase().includes(query) ||
       (m.phone && String(m.phone).toLowerCase().includes(query)) ||
       (m.lastBillNumber && String(m.lastBillNumber).toLowerCase().includes(query)) ||
+      (m.additionalPendingNote && m.additionalPendingNote.toLowerCase().includes(query)) ||
+      (getAdditionalPendingAmount(m) > 0 && String(getAdditionalPendingAmount(m)).includes(query)) ||
       m.monthsDesc.toLowerCase().includes(query);
   });
 
@@ -602,10 +631,14 @@ function renderMembers(list) {
     const isPaid = m.status === "PAID";
     const statusClass = isPaid ? "paid" : "remaining";
     const outstandingClass = isPaid ? "paid" : "";
+    const additionalPendingAmount = getAdditionalPendingAmount(m);
+    const additionalPendingNote = getAdditionalPendingNote(m);
+    const hasAdditionalPending = additionalPendingAmount > 0;
     const advanceActive = isAdvanceActive(m);
     const advanceExpiring = isAdvanceExpiringSoon(m);
     const cardClasses = [
       statusClass,
+      hasAdditionalPending ? "additional-pending" : "",
       advanceActive ? "advance" : "",
       advanceExpiring ? "advance-expiring" : ""
     ].filter(Boolean).join(" ");
@@ -651,6 +684,17 @@ function renderMembers(list) {
             <div class="remarks-box">
               <i class="ti ti-info-circle"></i>
               <span>${m.monthsDesc}</span>
+            </div>
+          ` : ""}
+
+          ${hasAdditionalPending ? `
+            <div class="additional-pending-box">
+              <div class="additional-pending-title">
+                <i class="ti ti-alert-triangle"></i>
+                <span>${t("card.additionalPending")}</span>
+                <strong>₹${additionalPendingAmount.toLocaleString("en-IN")}</strong>
+              </div>
+              ${additionalPendingNote ? `<div class="additional-pending-note">${escapeHtml(additionalPendingNote)}</div>` : ""}
             </div>
           ` : ""}
 
@@ -870,6 +914,26 @@ function getWhatsAppDateLine(lang) {
   return lang === "gu" ? `તારીખ: *${dateStr}*` : `Date: *${dateStr}*`;
 }
 
+function buildAdditionalPendingWhatsAppLines(member, lang) {
+  const amount = getAdditionalPendingAmount(member);
+  if (amount <= 0) return "";
+
+  const note = getAdditionalPendingNote(member);
+  if (lang === "gu") {
+    let lines = `\n\n*વધારાની બાકી રકમ: ₹${amount.toLocaleString("en-IN")}*`;
+    if (note) {
+      lines += `\nવધારાની બાકી નોંધ: ${note}`;
+    }
+    return lines;
+  }
+
+  let lines = `\n\n*Additional pending amount: ₹${amount.toLocaleString("en-IN")}*`;
+  if (note) {
+    lines += `\nAdditional pending note: ${note}`;
+  }
+  return lines;
+}
+
 function monthsLabelEn(n) {
   return n === 1 ? "1 month" : `${n} months`;
 }
@@ -913,6 +977,7 @@ JazakAllah! Thank you for your maintenance payment.
   en += `\n• *Total paid: ₹${amountPaid.toLocaleString("en-IN")}*`;
   en += `\nMethod: *${methodEn}*`;
   en += `\n\nYour maintenance is fully covered until *${toEn}*. ✅`;
+  en += buildAdditionalPendingWhatsAppLines(member, "en");
 
   let gu = `સલામ,
 
@@ -932,6 +997,7 @@ ${getWhatsAppDateLine("gu")}
   gu += `\n• *કુલ ચૂકવેલ: ₹${amountPaid.toLocaleString("en-IN")}*`;
   gu += `\nપદ્ધતિ: *${methodGu}*`;
   gu += `\n\nતમારું મેન્ટેનન્સ *${toGu}* સુધી પૂરું કવર છે. ✅`;
+  gu += buildAdditionalPendingWhatsAppLines(member, "gu");
 
   return `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
 }
@@ -1046,8 +1112,13 @@ function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
   }
 
   if (isFullyPaid) {
-    en += `\n*All outstanding dues are now cleared.* ✅\nOutstanding: *₹0* | Remaining: *0 month(s)*`;
-    gu += `\n*બધી બાકી રકમ હવે ચૂકવાઈ ગઈ છે.* ✅\nબાકી: *₹0* | બાકી મહિના: *0*`;
+    if (getAdditionalPendingAmount(member) > 0) {
+      en += `\n*Current maintenance dues are now cleared.* ✅\nCurrent outstanding: *₹0* | Current remaining: *0 month(s)*`;
+      gu += `\n*હાલનું મેન્ટેનન્સ હવે ચૂકવાઈ ગયું છે.* ✅\nહાલની બાકી: *₹0* | હાલના બાકી મહિના: *0*`;
+    } else {
+      en += `\n*All outstanding dues are now cleared.* ✅\nOutstanding: *₹0* | Remaining: *0 month(s)*`;
+      gu += `\n*બધી બાકી રકમ હવે ચૂકવાઈ ગઈ છે.* ✅\nબાકી: *₹0* | બાકી મહિના: *0*`;
+    }
     if (member.monthsDesc) {
       en += `\nDetails: ${member.monthsDesc}`;
       gu += `\nવિગત: ${member.monthsDesc}`;
@@ -1068,6 +1139,9 @@ function buildThankYouMessage(member, { monthsPaid, amountPaid, method }) {
     en += `\n\nPlease clear the remaining dues when possible.`;
     gu += `\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
   }
+
+  en += buildAdditionalPendingWhatsAppLines(member, "en");
+  gu += buildAdditionalPendingWhatsAppLines(member, "gu");
 
   return `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
 }
@@ -1133,8 +1207,8 @@ window.sendWhatsAppReminder = function(index) {
   } else {
     const details = member.monthsDesc || "Pending maintenance payment.";
     const detailsGu = member.monthsDesc || "મેન્ટેનન્સ પેમેન્ટ બાકી છે.";
-    const en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${monthsLabelEn(member.remainingMonths)}*\nRate: ₹${member.rate}/month\nDetails: ${details}\n\nPlease clear the dues as soon as possible.`;
-    const gu = `સલામ,\n\n*એહસાન પાર્ક સોસાયટી મેન્ટેનન્સ રિમાઇન્ડર*\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nબાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nબાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\nદર: ₹${member.rate}/મહિનો\nવિગત: ${detailsGu}\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
+    const en = `Assalamu Alaikum,\n\n*Ihsanpark Society Maintenance Reminder*\n${getWhatsAppDateLine("en")}\nBungalow: *${member.bungalow}*\nOwner: *${member.ownerName}*\n\nOutstanding Amount: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nOutstanding Months: *${monthsLabelEn(member.remainingMonths)}*\nRate: ₹${member.rate}/month\nDetails: ${details}${buildAdditionalPendingWhatsAppLines(member, "en")}\n\nPlease clear the dues as soon as possible.`;
+    const gu = `સલામ,\n\n*એહસાન પાર્ક સોસાયટી મેન્ટેનન્સ રિમાઇન્ડર*\n${getWhatsAppDateLine("gu")}\nબંગલો: *${member.bungalow}*\nમાલિક: *${member.ownerName}*\n\nબાકી રકમ: *₹${member.totalRemaining.toLocaleString("en-IN")}* ⚠️\nબાકી મહિના: *${monthsLabelGu(member.remainingMonths)}*\nદર: ₹${member.rate}/મહિનો\nવિગત: ${detailsGu}${buildAdditionalPendingWhatsAppLines(member, "gu")}\n\nકૃપા કરીને બાકી રકમ જલ્દી ચૂકવો.`;
     message = `${en}\n\n────────────────\n${gu}\n\nJazakAllah!`;
   }
 
@@ -1167,17 +1241,21 @@ function resetForm() {
   elements.ownerName.classList.remove("invalid");
   elements.rate.classList.remove("invalid");
   elements.remainingMonths.classList.remove("invalid");
+  elements.additionalPendingAmount.classList.remove("invalid");
   elements.lastBillNumber.classList.remove("invalid");
   
   elements.bungalowError.textContent = "";
   elements.ownerNameError.textContent = "";
   elements.rateError.textContent = "";
   elements.remainingMonthsError.textContent = "";
+  elements.additionalPendingAmountError.textContent = "";
   elements.lastBillNumberError.textContent = "";
   
   // Set default values
   elements.rate.value = 700;
   elements.remainingMonths.value = 1;
+  elements.additionalPendingAmount.value = 0;
+  elements.additionalPendingNote.value = "";
   elements.calcTotalDisplay.textContent = "₹700";
   
   state.editIndex = null;
@@ -1508,6 +1586,8 @@ window.triggerEdit = function(index) {
   elements.lastBillNumber.value = member.lastBillNumber || "";
   elements.paymentDate.value = normalizeDateForInput(member.paymentDate || "");
   elements.monthsDesc.value = member.monthsDesc;
+  elements.additionalPendingAmount.value = getAdditionalPendingAmount(member);
+  elements.additionalPendingNote.value = getAdditionalPendingNote(member);
   elements.rate.value = member.rate;
   elements.remainingMonths.value = member.remainingMonths;
   elements.method.value = member.method;
@@ -1593,11 +1673,13 @@ async function handleFormSubmit(e) {
   elements.ownerName.classList.remove("invalid");
   elements.rate.classList.remove("invalid");
   elements.remainingMonths.classList.remove("invalid");
+  elements.additionalPendingAmount.classList.remove("invalid");
   elements.lastBillNumber.classList.remove("invalid");
   elements.bungalowError.textContent = "";
   elements.ownerNameError.textContent = "";
   elements.rateError.textContent = "";
   elements.remainingMonthsError.textContent = "";
+  elements.additionalPendingAmountError.textContent = "";
   elements.lastBillNumberError.textContent = "";
 
   let isValid = true;
@@ -1606,6 +1688,9 @@ async function handleFormSubmit(e) {
   const ownerVal = elements.ownerName.value.trim();
   const rateVal = Number(elements.rate.value);
   const remainingMonthsVal = Number(elements.remainingMonths.value);
+  const additionalPendingAmountRaw = elements.additionalPendingAmount.value.trim();
+  const additionalPendingAmountVal = additionalPendingAmountRaw ? Number(additionalPendingAmountRaw) : 0;
+  const additionalPendingNoteVal = elements.additionalPendingNote.value.trim();
   const lastBillNumberVal = elements.lastBillNumber.value.trim();
 
   if (!bungalowVal) {
@@ -1629,6 +1714,12 @@ async function handleFormSubmit(e) {
   if (isNaN(remainingMonthsVal) || remainingMonthsVal < 0) {
     elements.remainingMonths.classList.add("invalid");
     elements.remainingMonthsError.textContent = t("err.months");
+    isValid = false;
+  }
+
+  if (isNaN(additionalPendingAmountVal) || additionalPendingAmountVal < 0) {
+    elements.additionalPendingAmount.classList.add("invalid");
+    elements.additionalPendingAmountError.textContent = t("err.additionalPendingAmount");
     isValid = false;
   }
 
@@ -1678,6 +1769,8 @@ async function handleFormSubmit(e) {
     lastBillNumber: lastBillNumberVal,
     paymentDate: elements.paymentDate.value,
     monthsDesc: elements.monthsDesc.value.trim(),
+    additionalPendingAmount: additionalPendingAmountVal,
+    additionalPendingNote: additionalPendingNoteVal,
     rate: rateVal,
     remainingMonths: remainingMonthsVal,
     method: elements.method.value,

@@ -43,7 +43,7 @@ function doGet(e) {
     
     // Assuming row 1: Month title
     // Row 2: Chart Main Header
-    // Row 3: Headers (NO:-, BOUNGLOW, Remaining, Method, Bank Money, OWNER NAME, MONTH'S, RATE, REMAINING MONTHS, TOTAL REMAINING)
+    // Row 3: Headers (NO:-, BOUNGLOW, Remaining, Method, Bank Money, OWNER NAME, MONTH'S, RATE, REMAINING MONTHS, TOTAL REMAINING, Phone, Last Bill, Payment Date, Coverage Start, Coverage End, Additional Pending Amount, Additional Pending Note)
     // Row 4 (index 3) is where data starts.
     const startRow = 3; 
     
@@ -68,7 +68,9 @@ function doGet(e) {
         lastBillNumber: row[11] || "",
         paymentDate: formatSheetDate(row[12]),
         coverageStart: formatSheetDate(row[13]),
-        coverageEnd: formatSheetDate(row[14])
+        coverageEnd: formatSheetDate(row[14]),
+        additionalPendingAmount: Number(row[15]) || 0,
+        additionalPendingNote: row[16] || ""
       });
     }
     
@@ -120,6 +122,8 @@ function doPost(e) {
       const paymentDate = payload.paymentDate || "";
       const coverageStart = payload.coverageStart || "";
       const coverageEnd = payload.coverageEnd || "";
+      const additionalPendingAmount = Number(payload.additionalPendingAmount) || 0;
+      const additionalPendingNote = payload.additionalPendingNote || "";
       
       const newRow = [
         nextIndex,         // Column A: NO:-
@@ -136,7 +140,9 @@ function doPost(e) {
         lastBillNumber,    // Column L: Last Bill Number
         paymentDate,       // Column M: Payment Date
         coverageStart,     // Column N: Coverage Start
-        coverageEnd        // Column O: Coverage End
+        coverageEnd,       // Column O: Coverage End
+        additionalPendingAmount, // Column P: Additional Pending Amount
+        additionalPendingNote    // Column Q: Additional Pending Note
       ];
       
       sheet.appendRow(newRow);
@@ -172,6 +178,8 @@ function doPost(e) {
       if (payload.paymentDate !== undefined) sheet.getRange(foundRowIndex, 13).setValue(payload.paymentDate);
       if (payload.coverageStart !== undefined) sheet.getRange(foundRowIndex, 14).setValue(payload.coverageStart);
       if (payload.coverageEnd !== undefined) sheet.getRange(foundRowIndex, 15).setValue(payload.coverageEnd);
+      if (payload.additionalPendingAmount !== undefined) sheet.getRange(foundRowIndex, 16).setValue(Number(payload.additionalPendingAmount) || 0);
+      if (payload.additionalPendingNote !== undefined) sheet.getRange(foundRowIndex, 17).setValue(payload.additionalPendingNote);
       
       // Re-calculate Status and Total Remaining: Rate * Remaining Months
       const currentRate = payload.rate !== undefined ? Number(payload.rate) : Number(values[foundRowIndex - 1][7]);

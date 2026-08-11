@@ -71,6 +71,13 @@ To link this dashboard with a live Google Spreadsheet:
      - Column H: `RATE` (Monthly rate, e.g., 700)
      - Column I: `REMAINING MONTHS`
      - Column J: `TOTAL REMAINING` (Calculated automatically as Rate × Months)
+     - Column K: `Phone Number`
+     - Column L: `Last Bill Number`
+     - Column M: `Payment Date`
+     - Column N: `Coverage Start`
+     - Column O: `Coverage End`
+     - Column P: `Additional Pending Amount` (optional legacy/past due amount)
+     - Column Q: `Additional Pending Note` (optional note shown in WhatsApp when Column P is greater than 0)
 
 2. **Deploy the Apps Script**:
    - In Google Sheets, click **Extensions** > **Apps Script**.
