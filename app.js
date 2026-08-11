@@ -920,9 +920,9 @@ function buildAdditionalPendingWhatsAppLines(member, lang) {
 
   const note = getAdditionalPendingNote(member);
   if (lang === "gu") {
-    let lines = `\n\n*વધારાની બાકી રકમ: ₹${amount.toLocaleString("en-IN")}*`;
+    let lines = `\n\n*આગણ ના બાકી: ₹${amount.toLocaleString("en-IN")}*`;
     if (note) {
-      lines += `\nવધારાની બાકી નોંધ: ${note}`;
+      lines += `\nનોંધ: ${note}`;
     }
     return lines;
   }
